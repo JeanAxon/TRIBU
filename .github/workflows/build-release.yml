@@ -1,10 +1,10 @@
-name: Build & Release TRIBU (Windows + macOS Big Sur)
+name: "Build and Release TRIBU (Windows + macOS Big Sur)"
 
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 permissions:
   contents: write
