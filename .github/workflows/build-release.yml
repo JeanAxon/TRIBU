@@ -39,9 +39,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build for macOS (macOS 11 Big Sur compatible)
+      - name: Build for macOS (Universal: Intel + Apple Silicon, Big Sur compatible)
         if: startsWith(matrix.os, 'macos')
-        run: npx electron-builder --mac dmg zip
+        run: npx electron-builder --mac --universal
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
