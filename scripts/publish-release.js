@@ -96,9 +96,10 @@ Descarga el archivo adjunto **\`TRIBU-Setup-${version}.exe\`** al final de esta 
         'Accept': 'application/vnd.github.v3+json'
       }
     }, {
-      name: `TRIBU ${tag} - Asistente SRI (Windows)`,
+      name: `TRIBU ${tag} - Asistente SRI (Windows & macOS)`,
       body: releaseNotes.trim(),
-      prerelease: true
+      prerelease: false,
+      make_latest: 'true'
     });
     console.log('[OK] Notas del Release actualizadas.');
   } else {
@@ -114,10 +115,11 @@ Descarga el archivo adjunto **\`TRIBU-Setup-${version}.exe\`** al final de esta 
       }
     }, {
       tag_name: tag,
-      name: `TRIBU ${tag} - Asistente SRI (Windows)`,
+      name: `TRIBU ${tag} - Asistente SRI (Windows & macOS)`,
       body: releaseNotes.trim(),
       draft: false,
-      prerelease: true
+      prerelease: false,
+      make_latest: 'true'
     });
 
     if (createRes.statusCode === 201) {
