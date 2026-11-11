@@ -257,11 +257,19 @@ function setupAutoUpdater() {
   });
 
   if (app.isPackaged) {
+    // Comprobación inicial a los 4.5 segundos de abrir la app
     setTimeout(() => {
       autoUpdater.checkForUpdatesAndNotify().catch(e => {
         console.warn('[AutoUpdater] Excepción al comprobar actualización:', e.message);
       });
     }, 4500);
+
+    // Comprobación periódica cada 2 horas mientras la app permanezca abierta
+    setInterval(() => {
+      autoUpdater.checkForUpdatesAndNotify().catch(e => {
+        console.warn('[AutoUpdater] Excepción en comprobación periódica de actualización:', e.message);
+      });
+    }, 2 * 60 * 60 * 1000);
   }
 }
 

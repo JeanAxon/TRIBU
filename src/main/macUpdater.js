@@ -14,6 +14,17 @@ class MacUpdater extends EventEmitter {
     this.repo = 'JeanAxon/TRIBU';
     this.downloadedUpdate = null;
     this.isDownloading = false;
+    this._isInstalling = false;
+
+    try {
+      if (app && typeof app.on === 'function') {
+        app.on('before-quit', () => {
+          if (this.autoInstallOnAppQuit && this.downloadedUpdate && !this._isInstalling) {
+            this.quitAndInstall(false);
+          }
+        });
+      }
+    } catch (e) {}
   }
 
   // Compara versiones semver simples (ej: '0.1.5' > '0.1.4')
@@ -207,7 +218,10 @@ class MacUpdater extends EventEmitter {
   }
 
   // Reemplaza el paquete .app en /Applications de forma silenciosa sin requerir ShipIt ni firmas de pago
-  quitAndInstall() {
+  quitAndInstall(relaunch = true) {
+    if (this._isInstalling) return;
+    this._isInstalling = true;
+
     if (!this.downloadedUpdate) {
       console.warn('[MacUpdater] No hay actualización descargada lista para instalar.');
       app.quit();
@@ -228,7 +242,7 @@ class MacUpdater extends EventEmitter {
 
     console.log(`[MacUpdater] Aplicando actualización a ${targetAppPath}...`);
 
-    // Script bash autónomo que espera la salida de TRIBU, reemplaza el .app y lo relanza
+    // Script bash autónomo que espera la salida de TRIBU, reemplaza el .app y relanza si corresponde
     const scriptPath = path.join(app.getPath('temp'), 'tribu_apply_mac_update.sh');
     const scriptContent = `#!/bin/bash
 TARGET_PID=${process.pid}
@@ -236,6 +250,7 @@ TARGET_APP="${targetAppPath}"
 NEW_APP="${extractedAppPath}"
 TEMP_ZIP="${zipPath}"
 TEMP_DIR="${extractDir}"
+RELAUNCH=${relaunch ? '1' : '0'}
 
 # 1. Esperar a que el proceso actual de TRIBU termine
 while kill -0 "$TARGET_PID" 2>/dev/null; do
@@ -251,8 +266,10 @@ if [ -d "$NEW_APP" ]; then
   # Eliminar atributo de cuarentena de Apple Gatekeeper para apertura inmediata
   xattr -cr "$TARGET_APP" 2>/dev/null || true
 
-  # 3. Relanzar la aplicación actualizada
-  open "$TARGET_APP"
+  # 3. Relanzar la aplicación actualizada solo si fue solicitado
+  if [ "$RELAUNCH" = "1" ]; then
+    open "$TARGET_APP"
+  fi
 fi
 
 # 4. Limpieza de archivos temporales
