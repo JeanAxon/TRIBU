@@ -9,6 +9,83 @@
 </head>
 <body>
 
+  <!-- =============================================================
+       SPLASH SCREEN ANIMADO INSTITUCIONAL (ASISTENTE TRIBUTARIO)
+       ============================================================= -->
+  <div id="appSplashOverlay" class="app-splash-overlay" aria-hidden="true">
+    <div class="splash-modal">
+      <!-- Emblema Central Animado con SVG / Canvas / CSS -->
+      <div class="splash-emblem-wrap">
+        <div class="splash-glow"></div>
+        <div class="splash-pulse-ring"></div>
+        <svg class="splash-svg" viewBox="0 0 200 200" width="140" height="140">
+          <defs>
+            <linearGradient id="splashShieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#0c4fa8" />
+              <stop offset="50%" stop-color="#073273" />
+              <stop offset="100%" stop-color="#03173d" />
+            </linearGradient>
+
+            <linearGradient id="splashBarGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#38bdf8" />
+              <stop offset="50%" stop-color="#ffffff" />
+              <stop offset="100%" stop-color="#00d293" />
+            </linearGradient>
+
+            <linearGradient id="splashStemGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#ffffff" />
+              <stop offset="40%" stop-color="#38bdf8" />
+              <stop offset="100%" stop-color="#00d293" />
+            </linearGradient>
+
+            <filter id="splashGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3.5" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
+          <!-- 1. Escudo Squircle Institucional -->
+          <rect class="splash-shape-shield" x="14" y="14" width="172" height="172" rx="42" ry="42" fill="url(#splashShieldGrad)" stroke="rgba(255,255,255,0.25)" stroke-width="2.5" />
+
+          <!-- 2. Factura Digital / Documento Electrónico Plegado (SRI) -->
+          <g class="splash-shape-doc">
+            <path d="M 68 56 L 122 56 L 138 72 L 138 144 L 68 144 Z" fill="rgba(255,255,255,0.09)" stroke="rgba(56,189,248,0.35)" stroke-width="1.8" />
+            <line class="splash-doc-line line-1" x1="80" y1="88" x2="124" y2="88" stroke="rgba(255,255,255,0.45)" stroke-width="2" stroke-linecap="round" />
+            <line class="splash-doc-line line-2" x1="80" y1="102" x2="124" y2="102" stroke="rgba(255,255,255,0.45)" stroke-width="2" stroke-linecap="round" />
+            <line class="splash-doc-line line-3" x1="80" y1="116" x2="110" y2="116" stroke="rgba(0,210,147,0.7)" stroke-width="2" stroke-linecap="round" />
+          </g>
+
+          <!-- 3. Monograma "T" Tecnológico -->
+          <!-- Barra Horizontal Superior -->
+          <rect class="splash-shape-tbar" x="42" y="48" width="116" height="24" rx="7" fill="url(#splashBarGrad)" filter="url(#splashGlow)" />
+          
+          <!-- Pilar Vertical / Flecha Ascendente -->
+          <path class="splash-shape-stem" d="M 84 72 L 116 72 L 116 138 L 100 152 L 84 138 Z" fill="url(#splashStemGrad)" />
+
+          <!-- 4. Palomita / Checkmark de Validación Tributaria SRI -->
+          <path class="splash-shape-check" d="M 78 108 L 94 124 L 132 86" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+
+          <!-- 5. Tríada de Nodos de la Tribu (Contribuyente - Contador - SRI) -->
+          <circle class="splash-dot dot-1" cx="54" cy="140" r="4.5" fill="#38bdf8" />
+          <circle class="splash-dot dot-2" cx="100" cy="166" r="5.5" fill="#00d293" />
+          <circle class="splash-dot dot-3" cx="146" cy="140" r="4.5" fill="#38bdf8" />
+        </svg>
+      </div>
+
+      <!-- Nombre de Marca y Subtítulo -->
+      <div class="splash-brand-text">
+        <h1 class="splash-title">TRIBU</h1>
+        <div class="splash-tagline">ASISTENTE TRIBUTARIO & SRI ECUADOR</div>
+      </div>
+
+      <!-- Barra de Progreso de Inicio -->
+      <div class="splash-loader-bar">
+        <div class="splash-loader-progress"></div>
+      </div>
+      <div class="splash-status-text" id="splashStatusText">Iniciando entorno tributario seguro...</div>
+    </div>
+  </div>
+
   <!-- UN SOLO ENCABEZADO PRINCIPAL (FIJO, CENTRADO Y PASIVO) -->
   <header class="app-header">
     <div class="header-left-group">

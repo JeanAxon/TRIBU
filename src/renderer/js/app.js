@@ -4,6 +4,31 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // 0. CONTROLADOR DE SPLASH SCREEN ANIMADO AL INICIAR
+  const splashOverlay = document.getElementById('appSplashOverlay');
+  if (splashOverlay) {
+    let splashDismissed = false;
+    const dismissSplash = () => {
+      if (splashDismissed) return;
+      splashDismissed = true;
+      splashOverlay.classList.add('fade-out');
+      setTimeout(() => {
+        splashOverlay.style.display = 'none';
+      }, 420);
+    };
+
+    // Salida automática fluida tras la animación (1.8s)
+    setTimeout(dismissSplash, 1850);
+
+    // Salto inmediato opcional por clic o teclado
+    splashOverlay.addEventListener('click', dismissSplash);
+    window.addEventListener('keydown', (e) => {
+      if (!splashDismissed && (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter')) {
+        dismissSplash();
+      }
+    }, { once: true });
+  }
+
   // Estado de la aplicación
   let state = {
     baseFolder: '',

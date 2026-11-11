@@ -28,29 +28,21 @@ async function main() {
   const tag = 'v0.1.0-alpha';
 
   const releaseNotes = `
-# TRIBU - Versión Alpha (v0.1.0-alpha) 🚀
+# TRIBU - Asistente Contable y Tributario SRI Ecuador (v0.1.0-alpha) 🚀
 
-Software de escritorio institucional y de alta eficiencia basado en Electron para contadores y contribuyentes en Ecuador.
+Versión inicial oficial de TRIBU para Windows.
 
-### 📦 Novedades de esta versión:
-- **Descargador masivo ultra-rápido de XML y RIDE (PDF):**
-  - Procesamiento reactivo en paralelo (menos de 4 segundos por página).
-  - Nombres oficiales intactos y organización automática por carpetas: \`[Cliente]/[Ventas|Compras]/[Año]/[Mes]/[XML|PDF]/\`.
-- **Reclamo Automático de IVA (Discapacidad / Tercera Edad):**
-  - Detección e inferencia inteligente de categoría de gasto (\`alimentación\`, \`salud\`, \`educación\`, \`vestimenta\`, \`vivienda\`).
-  - Llenado automático del IVA solicitado y selección de comprobantes en tiempo real con drawer de progreso.
-- **Módulo ATS Autónomo & Reportes Excel/CSV:**
-  - Generación del Anexo Transaccional Simplificado (ATS) en XML oficial válido para el DIMM / SRI.
-  - Exportación detallada en formato CSV compatible con Microsoft Excel.
-- **Seguridad y Aislamiento:**
-  - Particiones de sesión independientes por cada RUC (\`persist:sri_[RUC]\`).
-  - Credenciales cifradas localmente con AES-256.
-- **Identidad Visual Oficial:**
-  - Nuevo logotipo e icono institucional en alta definición (.ico y .png).
+### ⬇️ Descarga e Instalación:
+Descarga el archivo adjunto **\`TRIBU-Setup-0.1.0-alpha.exe\`** al final de esta publicación y ejecútalo para instalar en Windows 10/11.
 
 ---
-### 💾 Descarga del Instalador para Windows:
-Descarga el archivo adjunto **\`TRIBU Setup 0.1.0-alpha.exe\`** para instalar en cualquier computadora con Windows 10/11.
+
+### ⚡ Características principales:
+- **Descargas Masivas:** Comprobantes electrónicos XML y RIDE (PDF) organizados por cliente, año y mes en segundos.
+- **Reclamo Automático de IVA:** Llenado inteligente de la tabla de devolución (discapacidad y tercera edad).
+- **Módulo ATS Oficial:** Generación de Anexo Transaccional en XML para DIMM/SRI y reportes en Excel/CSV.
+- **Privacidad Local:** Contraseñas y sesiones aisladas cifradas con AES-256 en tu propio equipo.
+- **Identidad Visual:** Icono institucional de alta calidad y animación de inicio.
 `;
 
   // 2. Verificar o crear el Release
@@ -89,6 +81,23 @@ Descarga el archivo adjunto **\`TRIBU Setup 0.1.0-alpha.exe\`** para instalar en
   if (getRelRes.statusCode === 200) {
     console.log('[OK] Release existente encontrado con ID:', getRelRes.data.id);
     release = getRelRes.data;
+    // Actualizar descripción a la versión profesional y sencilla
+    await apiRequest({
+      hostname: 'api.github.com',
+      path: `/repos/${repo}/releases/${release.id}`,
+      method: 'PATCH',
+      headers: {
+        'User-Agent': 'TRIBU-Release-Script',
+        'Authorization': `token ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    }, {
+      name: 'TRIBU v0.1.0-alpha - Versión Inicial (Windows)',
+      body: releaseNotes.trim(),
+      prerelease: true
+    });
+    console.log('[OK] Notas del Release actualizadas con formato profesional y conciso.');
   } else {
     const createRes = await apiRequest({
       hostname: 'api.github.com',
@@ -102,7 +111,7 @@ Descarga el archivo adjunto **\`TRIBU Setup 0.1.0-alpha.exe\`** para instalar en
       }
     }, {
       tag_name: tag,
-      name: 'TRIBU v0.1.0-alpha - Versión Inicial',
+      name: 'TRIBU v0.1.0-alpha - Versión Inicial (Windows)',
       body: releaseNotes.trim(),
       draft: false,
       prerelease: true
@@ -126,69 +135,79 @@ Descarga el archivo adjunto **\`TRIBU Setup 0.1.0-alpha.exe\`** para instalar en
 
   const stat = fs.statSync(installerPath);
   const fileName = 'TRIBU-Setup-0.1.0-alpha.exe';
-  console.log(`2. Subiendo instalador ${fileName} (${(stat.size / (1024 * 1024)).toFixed(2)} MB)...`);
 
-  // Verificar si el asset ya existe para eliminarlo y subirlo limpio
+  // Verificar si el asset ya existe y está idéntico para evitar re-subidas innecesarias
+  let needUpload = true;
   if (release.assets && release.assets.length > 0) {
     for (const a of release.assets) {
-      if (a.name === fileName || a.name === 'TRIBU Setup 0.1.0-alpha.exe') {
-        console.log(`Eliminando versión anterior del asset ${a.name} (ID: ${a.id})...`);
-        await apiRequest({
-          hostname: 'api.github.com',
-          path: `/repos/${repo}/releases/assets/${a.id}`,
-          method: 'DELETE',
-          headers: {
-            'User-Agent': 'TRIBU-Release-Script',
-            'Authorization': `token ${token}`,
-            'Accept': 'application/vnd.github.v3+json'
-          }
-        });
+      if (a.name === fileName) {
+        if (a.size === stat.size) {
+          console.log(`[OK] El instalador ${fileName} ya está subido y sincronizado en GitHub (${(a.size / (1024 * 1024)).toFixed(2)} MB).`);
+          needUpload = false;
+        } else {
+          console.log(`Eliminando versión anterior del asset ${a.name} (ID: ${a.id})...`);
+          await apiRequest({
+            hostname: 'api.github.com',
+            path: `/repos/${repo}/releases/assets/${a.id}`,
+            method: 'DELETE',
+            headers: {
+              'User-Agent': 'TRIBU-Release-Script',
+              'Authorization': `token ${token}`,
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          });
+        }
       }
     }
   }
 
-  // Subir binario a uploads.github.com
-  const uploadUrl = new URL(release.upload_url.replace(/\{(\?.*)?\}/, ''));
-  uploadUrl.searchParams.set('name', fileName);
+  if (needUpload) {
+    console.log(`2. Subiendo instalador ${fileName} (${(stat.size / (1024 * 1024)).toFixed(2)} MB)...`);
+    // Subir binario a uploads.github.com
+    const uploadUrl = new URL(release.upload_url.replace(/\{(\?.*)?\}/, ''));
+    uploadUrl.searchParams.set('name', fileName);
 
-  const fileStream = fs.createReadStream(installerPath);
+    const fileStream = fs.createReadStream(installerPath);
 
-  const uploadReq = https.request({
-    hostname: uploadUrl.hostname,
-    path: uploadUrl.pathname + uploadUrl.search,
-    method: 'POST',
-    headers: {
-      'User-Agent': 'TRIBU-Release-Script',
-      'Authorization': `token ${token}`,
-      'Content-Type': 'application/octet-stream',
-      'Content-Length': stat.size,
-      'Accept': 'application/vnd.github.v3+json'
-    }
-  }, (res) => {
-    let body = '';
-    res.on('data', chunk => body += chunk);
-    res.on('end', () => {
-      if (res.statusCode === 201) {
-        console.log(`\n🎉 [EXITO] ¡Instalador ${fileName} subido correctamente al Release!`);
-        console.log(`URL del Release: ${release.html_url}`);
-      } else {
-        console.error('Error subiendo el asset:', res.statusCode, body);
+    const uploadReq = https.request({
+      hostname: uploadUrl.hostname,
+      path: uploadUrl.pathname + uploadUrl.search,
+      method: 'POST',
+      headers: {
+        'User-Agent': 'TRIBU-Release-Script',
+        'Authorization': `token ${token}`,
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': stat.size,
+        'Accept': 'application/vnd.github.v3+json'
       }
+    }, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        if (res.statusCode === 201) {
+          console.log(`\n🎉 [EXITO] ¡Instalador ${fileName} subido correctamente al Release!`);
+          console.log(`URL del Release: ${release.html_url}`);
+        } else {
+          console.error('Error subiendo el asset:', res.statusCode, body);
+        }
+      });
     });
-  });
 
-  uploadReq.on('error', (err) => {
-    console.error('Error de red al subir el asset:', err);
-  });
+    uploadReq.on('error', (err) => {
+      console.error('Error de red al subir el asset:', err);
+    });
 
-  let uploadedBytes = 0;
-  fileStream.on('data', (chunk) => {
-    uploadedBytes += chunk.length;
-    const pct = Math.round((uploadedBytes / stat.size) * 100);
-    process.stdout.write(`\rProgreso de subida: ${pct}% (${(uploadedBytes / (1024 * 1024)).toFixed(1)} / ${(stat.size / (1024 * 1024)).toFixed(1)} MB)`);
-  });
+    let uploadedBytes = 0;
+    fileStream.on('data', (chunk) => {
+      uploadedBytes += chunk.length;
+      const pct = Math.round((uploadedBytes / stat.size) * 100);
+      process.stdout.write(`\rProgreso de subida: ${pct}% (${(uploadedBytes / (1024 * 1024)).toFixed(1)} / ${(stat.size / (1024 * 1024)).toFixed(1)} MB)`);
+    });
 
-  fileStream.pipe(uploadReq);
+    fileStream.pipe(uploadReq);
+  } else {
+    console.log(`URL del Release: ${release.html_url}`);
+  }
 }
 
 main().catch(console.error);
