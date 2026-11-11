@@ -1,7 +1,8 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, session, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { autoUpdater } = require('electron-updater');
+const isMac = process.platform === 'darwin';
+const autoUpdater = isMac ? require('./macUpdater') : require('electron-updater').autoUpdater;
 
 // Fijar nombre de la aplicación y ruta userData consistente en todas las instancias y reinicios
 app.setName('tribu-sri');
@@ -187,9 +188,13 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('updater:quit-and-install', async () => {
-    // isSilent: true (actualización silenciosa sin asistente de reinstalación)
-    // isForceRunAfter: true (reinicia inmediatamente la app actualizada)
-    autoUpdater.quitAndInstall(true, true);
+    if (isMac) {
+      autoUpdater.quitAndInstall();
+    } else {
+      // isSilent: true (actualización silenciosa sin asistente de reinstalación)
+      // isForceRunAfter: true (reinicia inmediatamente la app actualizada)
+      autoUpdater.quitAndInstall(true, true);
+    }
     return true;
   });
 }
