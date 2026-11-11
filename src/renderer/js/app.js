@@ -1764,10 +1764,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const totalRows = info ? (info.rowCount || info.rowsCount || info.totalRows || 0) : 0;
 
       if (!info || !info.hasTable || totalRows === 0) {
-        openProgressDrawer('Reclamo Automático', 'No se detectó tabla de comprobantes.');
-        if (progressSpinner) progressSpinner.style.display = 'none';
-        if (btnCancelDownloadProcess) btnCancelDownloadProcess.style.display = 'none';
-        dismissProgressDrawer(800);
+        showBanner('No se encontró ninguna lista de comprobantes.', 'warning', 800);
         return;
       }
 
@@ -1872,9 +1869,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         dismissProgressDrawer(500);
       }
     } catch (err) {
-      if (progressSpinner) progressSpinner.style.display = 'none';
-      progressCurrentFile.textContent = 'Error: ' + err.message;
-      dismissProgressDrawer(1000);
+      if (state.isProcessingReclamo) {
+        if (progressSpinner) progressSpinner.style.display = 'none';
+        progressCurrentFile.textContent = 'Error: ' + err.message;
+        dismissProgressDrawer(1000);
+      } else {
+        showBanner('Error al consultar el SRI: ' + err.message, 'warning', 1000);
+      }
     } finally {
       state.isProcessingReclamo = false;
       btnDiscapacidadIva.disabled = false;
