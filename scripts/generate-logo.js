@@ -354,6 +354,18 @@ app.whenReady().then(async () => {
   fs.writeFileSync(path.join(buildDir, 'icon.ico'), icoBuffer);
   fs.writeFileSync(path.join(assetsDir, 'icon.ico'), icoBuffer);
 
-  console.log('[OK] Imágenes de alta calidad y archivo icon.ico generados exitosamente');
+  try {
+    const png2icons = require('png2icons');
+    const icnsBuffer = png2icons.createICNS(pngBuffers[1024] || pngBuffers[512], png2icons.BILINEAR, 0);
+    if (icnsBuffer) {
+      fs.writeFileSync(path.join(buildDir, 'icon.icns'), icnsBuffer);
+      fs.writeFileSync(path.join(assetsDir, 'icon.icns'), icnsBuffer);
+      console.log('[OK] Archivo icon.icns para macOS generado exitosamente');
+    }
+  } catch (e) {
+    console.warn('Aviso generando ICNS:', e.message);
+  }
+
+  console.log('[OK] Imágenes de alta calidad y archivos de iconos (ICO e ICNS) generados exitosamente');
   app.quit();
 });

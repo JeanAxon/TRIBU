@@ -137,8 +137,67 @@
       <button id="navSectionAts" class="nav-tab-btn" data-section="ats">ATS</button>
     </nav>
 
-    <!-- Espacio Pasivo Derecho (Garantiza centrado perfecto y estabilidad del encabezado) -->
-    <div class="header-right-group"></div>
+    <!-- Espacio Derecho: Indicador de Versión y Campana de Notificaciones -->
+    <div class="header-right-group">
+      <!-- Badge de Versión de la App -->
+      <div class="header-version-pill" id="headerVersionPill" title="Versión de TRIBU instalada">
+        <span class="version-bullet"></span>
+        <span class="version-label" id="appVersionText">v0.1.1-alpha</span>
+      </div>
+
+      <!-- Campana de Notificaciones de Actualización -->
+      <div class="header-notification-wrapper" id="headerNotificationWrapper">
+        <button type="button" class="btn-notification-bell" id="btnNotificationBell" title="Notificaciones de actualización" aria-label="Notificaciones de actualización">
+          <svg class="bell-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span class="notification-badge-dot" id="notificationBadgeDot" style="display: none;"></span>
+        </button>
+
+        <!-- Popover Flotante de Actualización -->
+        <div class="notification-popover" id="notificationPopover" aria-hidden="true">
+          <div class="notification-popover-header">
+            <span class="popover-title">Actualizaciones</span>
+            <span class="popover-version-tag" id="popoverCurrentVersion">v0.1.1-alpha</span>
+          </div>
+
+          <div class="notification-popover-body">
+            <div class="update-card" id="updateCard">
+              <div class="update-icon-circle" id="updateIconCircle">
+                <svg id="updateIconSvg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <div class="update-info-text">
+                <div class="update-title" id="updatePopoverTitle">TRIBU está actualizado</div>
+                <div class="update-desc" id="updatePopoverDesc">Cuentas con la versión más reciente en tu equipo.</div>
+              </div>
+            </div>
+
+            <!-- Progreso de descarga si se está descargando -->
+            <div class="update-progress-box" id="updatePopoverProgressBox" style="display: none;">
+              <div class="update-progress-bar-track">
+                <div class="update-progress-bar-fill" id="updatePopoverProgressFill" style="width: 0%;"></div>
+              </div>
+              <div class="update-progress-meta">
+                <span id="updatePopoverProgressLabel">Descargando actualización...</span>
+                <span id="updatePopoverProgressPct">0%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="notification-popover-footer">
+            <button type="button" class="btn-popover-check" id="btnPopoverCheck">
+              Buscar actualizaciones
+            </button>
+            <button type="button" class="btn-popover-restart" id="btnPopoverRestart" style="display: none;">
+              Reiniciar y actualizar ahora
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </header>
 
   <!-- CONTENEDOR PRINCIPAL DE VISTAS -->

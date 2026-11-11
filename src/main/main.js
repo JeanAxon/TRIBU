@@ -172,7 +172,9 @@ function setupIpcHandlers() {
     return false;
   });
 
-  // Manejadores de Actualización Automática (Auto-Updater)
+  // Manejadores de Versión y Actualización Automática (Auto-Updater)
+  ipcMain.handle('app:get-version', () => app.getVersion());
+
   ipcMain.handle('updater:check', async () => {
     if (app.isPackaged) {
       return autoUpdater.checkForUpdates();

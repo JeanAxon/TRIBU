@@ -41,7 +41,7 @@
       "package.json"
     ],
     "mac": {
-      "icon": "build/icon.png",
+      "icon": "assets/icon.icns",
       "category": "public.app-category.finance",
       "minimumSystemVersion": "11.0",
       "identity": null,
@@ -106,7 +106,8 @@
   },
   "devDependencies": {
     "electron": "^37.10.3",
-    "electron-builder": "^26.18.0"
+    "electron-builder": "^26.18.0",
+    "png2icons": "^2.0.1"
   },
   "dependencies": {
     "electron-updater": "^6.8.11",

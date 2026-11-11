@@ -29,28 +29,144 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, { once: true });
   }
 
-  // 0.1 CONTROLADOR DE ACTUALIZACIONES AUTOMÁTICAS
+  // 0.1 CONTROLADOR DE ACTUALIZACIONES AUTOMÁTICAS Y VERSIÓN EN ENCABEZADO
+  const appVersionText = document.getElementById('appVersionText');
+  const popoverCurrentVersion = document.getElementById('popoverCurrentVersion');
+  const btnNotificationBell = document.getElementById('btnNotificationBell');
+  const notificationPopover = document.getElementById('notificationPopover');
+  const notificationBadgeDot = document.getElementById('notificationBadgeDot');
+  const updatePopoverTitle = document.getElementById('updatePopoverTitle');
+  const updatePopoverDesc = document.getElementById('updatePopoverDesc');
+  const updateIconCircle = document.getElementById('updateIconCircle');
+  const updatePopoverProgressBox = document.getElementById('updatePopoverProgressBox');
+  const updatePopoverProgressFill = document.getElementById('updatePopoverProgressFill');
+  const updatePopoverProgressPct = document.getElementById('updatePopoverProgressPct');
+  const btnPopoverCheck = document.getElementById('btnPopoverCheck');
+  const btnPopoverRestart = document.getElementById('btnPopoverRestart');
+
   const appUpdateBanner = document.getElementById('appUpdateBanner');
   const updateBannerText = document.getElementById('updateBannerText');
   const btnUpdateRestart = document.getElementById('btnUpdateRestart');
   const btnUpdateClose = document.getElementById('btnUpdateClose');
 
+  // Obtener y mostrar la versión dinámica de la app
+  if (window.tribuApi && typeof window.tribuApi.getAppVersion === 'function') {
+    window.tribuApi.getAppVersion().then((ver) => {
+      if (ver) {
+        if (appVersionText) appVersionText.textContent = `v${ver}`;
+        if (popoverCurrentVersion) popoverCurrentVersion.textContent = `v${ver}`;
+      }
+    }).catch(() => {});
+  }
+
+  // Alternar popover de la campana de notificaciones
+  if (btnNotificationBell && notificationPopover) {
+    btnNotificationBell.addEventListener('click', (e) => {
+      e.stopPropagation();
+      notificationPopover.classList.toggle('show');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!notificationPopover.contains(e.target) && !btnNotificationBell.contains(e.target)) {
+        notificationPopover.classList.remove('show');
+      }
+    });
+  }
+
+  // Botón buscar actualizaciones en el popover
+  if (btnPopoverCheck) {
+    btnPopoverCheck.addEventListener('click', async () => {
+      btnPopoverCheck.disabled = true;
+      btnPopoverCheck.textContent = 'Buscando...';
+      if (updatePopoverTitle) updatePopoverTitle.textContent = 'Buscando actualizaciones...';
+      if (updatePopoverDesc) updatePopoverDesc.textContent = 'Consultando en el repositorio oficial de GitHub.';
+      try {
+        if (window.tribuApi && typeof window.tribuApi.checkForUpdates === 'function') {
+          await window.tribuApi.checkForUpdates();
+        }
+      } catch (e) {
+        console.warn('Error comprobando actualización:', e);
+      }
+      setTimeout(() => {
+        btnPopoverCheck.disabled = false;
+        btnPopoverCheck.textContent = 'Buscar actualizaciones';
+      }, 3500);
+    });
+  }
+
+  // Botón reiniciar y actualizar en el popover
+  if (btnPopoverRestart) {
+    btnPopoverRestart.addEventListener('click', () => {
+      if (window.tribuApi && typeof window.tribuApi.quitAndInstallUpdate === 'function') {
+        window.tribuApi.quitAndInstallUpdate();
+      }
+    });
+  }
+
+  // Escuchar eventos en tiempo real del auto-updater
   if (window.tribuApi && typeof window.tribuApi.onUpdaterStatus === 'function') {
     window.tribuApi.onUpdaterStatus((data) => {
-      if (!appUpdateBanner) return;
+      if (data.status === 'checking') {
+        if (updatePopoverTitle) updatePopoverTitle.textContent = 'Buscando actualizaciones...';
+        if (updatePopoverDesc) updatePopoverDesc.textContent = 'Consultando en GitHub...';
+      } else if (data.status === 'available') {
+        // Alerta en la campana
+        if (notificationBadgeDot) {
+          notificationBadgeDot.style.display = 'block';
+          notificationBadgeDot.classList.add('has-update');
+        }
+        if (updateIconCircle) updateIconCircle.classList.add('available');
+        if (updatePopoverTitle) updatePopoverTitle.textContent = `¡Nueva versión v${data.version} disponible!`;
+        if (updatePopoverDesc) updatePopoverDesc.textContent = 'Descargando en segundo plano. Se instalará automáticamente al cerrar.';
+        if (updatePopoverProgressBox) updatePopoverProgressBox.style.display = 'block';
 
-      if (data.status === 'available') {
-        appUpdateBanner.style.display = 'flex';
-        updateBannerText.textContent = `Descargando actualización v${data.version}...`;
-        if (btnUpdateRestart) btnUpdateRestart.style.display = 'none';
+        // Banner discreto inferior
+        if (appUpdateBanner) {
+          appUpdateBanner.style.display = 'flex';
+          if (updateBannerText) updateBannerText.textContent = `Descargando actualización v${data.version}...`;
+          if (btnUpdateRestart) btnUpdateRestart.style.display = 'none';
+        }
       } else if (data.status === 'downloading') {
-        appUpdateBanner.style.display = 'flex';
-        updateBannerText.textContent = `Descargando actualización: ${data.percent}%`;
-        if (btnUpdateRestart) btnUpdateRestart.style.display = 'none';
+        if (notificationBadgeDot) {
+          notificationBadgeDot.style.display = 'block';
+          notificationBadgeDot.classList.add('has-update');
+        }
+        if (updatePopoverProgressBox) updatePopoverProgressBox.style.display = 'block';
+        if (updatePopoverProgressFill) updatePopoverProgressFill.style.width = `${data.percent}%`;
+        if (updatePopoverProgressPct) updatePopoverProgressPct.textContent = `${data.percent}%`;
+
+        if (appUpdateBanner) {
+          appUpdateBanner.style.display = 'flex';
+          if (updateBannerText) updateBannerText.textContent = `Descargando actualización: ${data.percent}%`;
+          if (btnUpdateRestart) btnUpdateRestart.style.display = 'none';
+        }
       } else if (data.status === 'downloaded') {
-        appUpdateBanner.style.display = 'flex';
-        updateBannerText.textContent = `¡Actualización v${data.version} lista!`;
-        if (btnUpdateRestart) btnUpdateRestart.style.display = 'inline-block';
+        if (notificationBadgeDot) {
+          notificationBadgeDot.style.display = 'block';
+          notificationBadgeDot.classList.add('has-update');
+        }
+        if (updatePopoverTitle) updatePopoverTitle.textContent = `¡Versión v${data.version} lista para instalar!`;
+        if (updatePopoverDesc) updatePopoverDesc.textContent = 'Actualización descargada. Puedes reiniciar ahora o se instalará automáticamente al salir.';
+        if (updatePopoverProgressBox) updatePopoverProgressBox.style.display = 'none';
+        if (btnPopoverRestart) btnPopoverRestart.style.display = 'inline-block';
+        if (btnPopoverCheck) btnPopoverCheck.style.display = 'none';
+
+        if (appUpdateBanner) {
+          appUpdateBanner.style.display = 'flex';
+          if (updateBannerText) updateBannerText.textContent = `¡Actualización v${data.version} lista!`;
+          if (btnUpdateRestart) btnUpdateRestart.style.display = 'inline-block';
+        }
+      } else if (data.status === 'not-available') {
+        if (notificationBadgeDot) notificationBadgeDot.style.display = 'none';
+        if (updatePopoverTitle) updatePopoverTitle.textContent = 'TRIBU está actualizado';
+        if (updatePopoverDesc) updatePopoverDesc.textContent = 'Cuentas con la versión más reciente en tu equipo.';
+        if (updatePopoverProgressBox) updatePopoverProgressBox.style.display = 'none';
+        if (btnPopoverRestart) btnPopoverRestart.style.display = 'none';
+        if (btnPopoverCheck) btnPopoverCheck.style.display = 'inline-block';
+      } else if (data.status === 'error') {
+        if (updatePopoverTitle) updatePopoverTitle.textContent = 'Verificación completada';
+        if (updatePopoverDesc) updatePopoverDesc.textContent = data.message || 'Sin conexión o versión local de desarrollo.';
+        if (updatePopoverProgressBox) updatePopoverProgressBox.style.display = 'none';
       }
     });
 
@@ -62,7 +178,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (btnUpdateClose) {
       btnUpdateClose.addEventListener('click', () => {
-        appUpdateBanner.style.display = 'none';
+        if (appUpdateBanner) appUpdateBanner.style.display = 'none';
       });
     }
   }

@@ -72,7 +72,8 @@ contextBridge.exposeInMainWorld('tribuApi', {
     return () => ipcRenderer.removeListener('download-stats-update', handler);
   },
 
-  // Sistema de Actualizaciones Automáticas
+  // Sistema de Actualizaciones Automáticas y Versión
+  getAppVersion: () => ipcRenderer.invoke('app:get-version'),
   checkForUpdates: () => ipcRenderer.invoke('updater:check'),
   quitAndInstallUpdate: () => ipcRenderer.invoke('updater:quit-and-install'),
   onUpdaterStatus: (callback) => {
