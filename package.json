@@ -5,7 +5,10 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node test/testApp.js && node test/testAtsAndParser.js && node test/testDiscapacidadIva.js && electron test/testClientManager.js && electron test/testSecurityModule.js && electron test/testDuplicateProtocol.js && electron test/test_electron_dom.js"
+    "test": "node test/testApp.js && node test/testAtsAndParser.js && node test/testDiscapacidadIva.js && electron test/testClientManager.js && electron test/testSecurityModule.js && electron test/testDuplicateProtocol.js && electron test/test_electron_dom.js",
+    "dist": "electron-builder --win",
+    "dist:dir": "electron-builder --win --dir",
+    "dist:portable": "electron-builder --win portable"
   },
   "keywords": [
     "sri",
@@ -17,8 +20,40 @@
   ],
   "author": "TRIBU",
   "license": "ISC",
+  "build": {
+    "appId": "com.tribu.sri",
+    "productName": "TRIBU",
+    "copyright": "Copyright © 2026 TRIBU",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TRIBU - Asistente SRI",
+      "uninstallDisplayName": "TRIBU - Asistente Contable SRI",
+      "runAfterFinish": true
+    }
+  },
   "devDependencies": {
-    "electron": "^45.2.3"
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0"
   },
   "dependencies": {
     "fast-xml-parser": "^5.12.0"
