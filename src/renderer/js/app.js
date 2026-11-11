@@ -29,6 +29,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, { once: true });
   }
 
+  // 0.1 CONTROLADOR DE ACTUALIZACIONES AUTOMÁTICAS
+  const appUpdateBanner = document.getElementById('appUpdateBanner');
+  const updateBannerText = document.getElementById('updateBannerText');
+  const btnUpdateRestart = document.getElementById('btnUpdateRestart');
+  const btnUpdateClose = document.getElementById('btnUpdateClose');
+
+  if (window.tribuApi && typeof window.tribuApi.onUpdaterStatus === 'function') {
+    window.tribuApi.onUpdaterStatus((data) => {
+      if (!appUpdateBanner) return;
+
+      if (data.status === 'available') {
+        appUpdateBanner.style.display = 'flex';
+        updateBannerText.textContent = `Descargando actualización v${data.version}...`;
+        if (btnUpdateRestart) btnUpdateRestart.style.display = 'none';
+      } else if (data.status === 'downloading') {
+        appUpdateBanner.style.display = 'flex';
+        updateBannerText.textContent = `Descargando actualización: ${data.percent}%`;
+        if (btnUpdateRestart) btnUpdateRestart.style.display = 'none';
+      } else if (data.status === 'downloaded') {
+        appUpdateBanner.style.display = 'flex';
+        updateBannerText.textContent = `¡Actualización v${data.version} lista!`;
+        if (btnUpdateRestart) btnUpdateRestart.style.display = 'inline-block';
+      }
+    });
+
+    if (btnUpdateRestart) {
+      btnUpdateRestart.addEventListener('click', () => {
+        window.tribuApi.quitAndInstallUpdate();
+      });
+    }
+
+    if (btnUpdateClose) {
+      btnUpdateClose.addEventListener('click', () => {
+        appUpdateBanner.style.display = 'none';
+      });
+    }
+  }
+
   // Estado de la aplicación
   let state = {
     baseFolder: '',

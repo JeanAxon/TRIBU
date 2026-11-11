@@ -70,5 +70,14 @@ contextBridge.exposeInMainWorld('tribuApi', {
     const handler = (event, data) => callback(data);
     ipcRenderer.on('download-stats-update', handler);
     return () => ipcRenderer.removeListener('download-stats-update', handler);
+  },
+
+  // Sistema de Actualizaciones Automáticas
+  checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+  quitAndInstallUpdate: () => ipcRenderer.invoke('updater:quit-and-install'),
+  onUpdaterStatus: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('updater:status', handler);
+    return () => ipcRenderer.removeListener('updater:status', handler);
   }
 });

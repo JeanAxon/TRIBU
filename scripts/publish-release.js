@@ -4,7 +4,11 @@ const https = require('https');
 const { execSync } = require('child_process');
 
 async function main() {
-  console.log('--- Publicando Release v0.1.0-alpha en GitHub ---');
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
+  const version = pkg.version;
+  const tag = `v${version}`;
+
+  console.log(`--- Publicando Release ${tag} en GitHub ---`);
 
   // 1. Obtener token seguro de Git Credential Manager
   let token = null;
@@ -25,27 +29,27 @@ async function main() {
   }
 
   const repo = 'JeanAxon/TRIBU';
-  const tag = 'v0.1.0-alpha';
 
   const releaseNotes = `
-# TRIBU - Asistente Contable y Tributario SRI Ecuador (v0.1.0-alpha) 🚀
+# TRIBU - Asistente Contable y Tributario SRI Ecuador (${tag}) 🚀
 
-Versión inicial oficial de TRIBU para Windows.
+Versión oficial de TRIBU para Windows con soporte de actualización automática y mejoras de interfaz.
 
 ### ⬇️ Descarga e Instalación:
-Descarga el archivo adjunto **\`TRIBU-Setup-0.1.0-alpha.exe\`** al final de esta publicación y ejecútalo para instalar en Windows 10/11.
+Descarga el archivo adjunto **\`TRIBU-Setup-${version}.exe\`** al final de esta publicación y ejecútalo para instalar en Windows 10/11.
 
 ---
 
-### ⚡ Características principales:
-- **Descargas Masivas:** Comprobantes electrónicos XML y RIDE (PDF) organizados por cliente, año y mes en segundos.
+### ⚡ Novedades y Características principales:
+- **Actualizaciones Automáticas:** A partir de esta versión, TRIBU detecta y descarga actualizaciones automáticamente en segundo plano.
+- **Pantalla de Inicio con Logo Animado:** Nueva identidad visual con carga animada elegante y representativa del ecosistema tributario ecuatoriano.
+- **Descargas Masivas SRI:** Comprobantes electrónicos XML y RIDE (PDF) organizados por cliente, año y mes en segundos.
 - **Reclamo Automático de IVA:** Llenado inteligente de la tabla de devolución (discapacidad y tercera edad).
 - **Módulo ATS Oficial:** Generación de Anexo Transaccional en XML para DIMM/SRI y reportes en Excel/CSV.
-- **Privacidad Local:** Contraseñas y sesiones aisladas cifradas con AES-256 en tu propio equipo.
-- **Identidad Visual:** Icono institucional de alta calidad y animación de inicio.
+- **Privacidad Local Total:** Contraseñas y sesiones aisladas cifradas con AES-256 en tu propio equipo.
 `;
 
-  // 2. Verificar o crear el Release
+  // Helper para llamadas a GitHub REST API
   function apiRequest(options, postData) {
     return new Promise((resolve, reject) => {
       const req = https.request(options, (res) => {
@@ -65,7 +69,7 @@ Descarga el archivo adjunto **\`TRIBU-Setup-0.1.0-alpha.exe\`** al final de esta
     });
   }
 
-  console.log('1. Creando / Verificando el Release en GitHub...');
+  console.log(`1. Creando / Verificando el Release ${tag} en GitHub...`);
   let release = null;
   const getRelRes = await apiRequest({
     hostname: 'api.github.com',
@@ -81,7 +85,6 @@ Descarga el archivo adjunto **\`TRIBU-Setup-0.1.0-alpha.exe\`** al final de esta
   if (getRelRes.statusCode === 200) {
     console.log('[OK] Release existente encontrado con ID:', getRelRes.data.id);
     release = getRelRes.data;
-    // Actualizar descripción a la versión profesional y sencilla
     await apiRequest({
       hostname: 'api.github.com',
       path: `/repos/${repo}/releases/${release.id}`,
@@ -93,11 +96,11 @@ Descarga el archivo adjunto **\`TRIBU-Setup-0.1.0-alpha.exe\`** al final de esta
         'Accept': 'application/vnd.github.v3+json'
       }
     }, {
-      name: 'TRIBU v0.1.0-alpha - Versión Inicial (Windows)',
+      name: `TRIBU ${tag} - Asistente SRI (Windows)`,
       body: releaseNotes.trim(),
       prerelease: true
     });
-    console.log('[OK] Notas del Release actualizadas con formato profesional y conciso.');
+    console.log('[OK] Notas del Release actualizadas.');
   } else {
     const createRes = await apiRequest({
       hostname: 'api.github.com',
@@ -111,7 +114,7 @@ Descarga el archivo adjunto **\`TRIBU-Setup-0.1.0-alpha.exe\`** al final de esta
       }
     }, {
       tag_name: tag,
-      name: 'TRIBU v0.1.0-alpha - Versión Inicial (Windows)',
+      name: `TRIBU ${tag} - Asistente SRI (Windows)`,
       body: releaseNotes.trim(),
       draft: false,
       prerelease: true
@@ -126,88 +129,117 @@ Descarga el archivo adjunto **\`TRIBU-Setup-0.1.0-alpha.exe\`** al final de esta
     }
   }
 
-  // 3. Subir el archivo instalador (.exe)
-  const installerPath = path.join(__dirname, '../dist/TRIBU Setup 0.1.0-alpha.exe');
-  if (!fs.existsSync(installerPath)) {
-    console.error('No se encontró el instalador en:', installerPath);
-    process.exit(1);
-  }
+  // Subir assets necesarios para instalación y auto-actualizaciones (latest.yml, exe, blockmap)
+  const distDir = path.join(__dirname, '../dist');
+  const candidateFiles = [
+    `TRIBU-Setup-${version}.exe`,
+    `TRIBU Setup ${version}.exe`,
+    'latest.yml',
+    `TRIBU-Setup-${version}.exe.blockmap`,
+    `TRIBU Setup ${version}.exe.blockmap`
+  ];
 
-  const stat = fs.statSync(installerPath);
-  const fileName = 'TRIBU-Setup-0.1.0-alpha.exe';
-
-  // Verificar si el asset ya existe y está idéntico para evitar re-subidas innecesarias
-  let needUpload = true;
-  if (release.assets && release.assets.length > 0) {
-    for (const a of release.assets) {
-      if (a.name === fileName) {
-        if (a.size === stat.size) {
-          console.log(`[OK] El instalador ${fileName} ya está subido y sincronizado en GitHub (${(a.size / (1024 * 1024)).toFixed(2)} MB).`);
-          needUpload = false;
-        } else {
-          console.log(`Eliminando versión anterior del asset ${a.name} (ID: ${a.id})...`);
-          await apiRequest({
-            hostname: 'api.github.com',
-            path: `/repos/${repo}/releases/assets/${a.id}`,
-            method: 'DELETE',
-            headers: {
-              'User-Agent': 'TRIBU-Release-Script',
-              'Authorization': `token ${token}`,
-              'Accept': 'application/vnd.github.v3+json'
-            }
-          });
-        }
+  const filesToUpload = [];
+  for (const f of candidateFiles) {
+    const p = path.join(distDir, f);
+    if (fs.existsSync(p)) {
+      // Normalizar nombre remoto para que coincida con lo esperado por electron-updater
+      const remoteName = f.replace(/ /g, '-');
+      // Evitar duplicados
+      if (!filesToUpload.some(x => x.remoteName === remoteName)) {
+        filesToUpload.push({ localPath: p, remoteName, stat: fs.statSync(p) });
       }
     }
   }
 
-  if (needUpload) {
-    console.log(`2. Subiendo instalador ${fileName} (${(stat.size / (1024 * 1024)).toFixed(2)} MB)...`);
-    // Subir binario a uploads.github.com
-    const uploadUrl = new URL(release.upload_url.replace(/\{(\?.*)?\}/, ''));
-    uploadUrl.searchParams.set('name', fileName);
-
-    const fileStream = fs.createReadStream(installerPath);
-
-    const uploadReq = https.request({
-      hostname: uploadUrl.hostname,
-      path: uploadUrl.pathname + uploadUrl.search,
-      method: 'POST',
-      headers: {
-        'User-Agent': 'TRIBU-Release-Script',
-        'Authorization': `token ${token}`,
-        'Content-Type': 'application/octet-stream',
-        'Content-Length': stat.size,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    }, (res) => {
-      let body = '';
-      res.on('data', chunk => body += chunk);
-      res.on('end', () => {
-        if (res.statusCode === 201) {
-          console.log(`\n🎉 [EXITO] ¡Instalador ${fileName} subido correctamente al Release!`);
-          console.log(`URL del Release: ${release.html_url}`);
-        } else {
-          console.error('Error subiendo el asset:', res.statusCode, body);
-        }
-      });
-    });
-
-    uploadReq.on('error', (err) => {
-      console.error('Error de red al subir el asset:', err);
-    });
-
-    let uploadedBytes = 0;
-    fileStream.on('data', (chunk) => {
-      uploadedBytes += chunk.length;
-      const pct = Math.round((uploadedBytes / stat.size) * 100);
-      process.stdout.write(`\rProgreso de subida: ${pct}% (${(uploadedBytes / (1024 * 1024)).toFixed(1)} / ${(stat.size / (1024 * 1024)).toFixed(1)} MB)`);
-    });
-
-    fileStream.pipe(uploadReq);
-  } else {
-    console.log(`URL del Release: ${release.html_url}`);
+  if (filesToUpload.length === 0) {
+    console.error('No se encontraron archivos en dist/ para subir.');
+    process.exit(1);
   }
+
+  console.log(`\n2. Sincronizando ${filesToUpload.length} archivo(s) con GitHub Releases...`);
+
+  async function uploadFile(fileObj) {
+    const { localPath, remoteName, stat } = fileObj;
+
+    // Verificar si ya existe en el release
+    if (release.assets && release.assets.length > 0) {
+      for (const a of release.assets) {
+        if (a.name === remoteName) {
+          if (a.size === stat.size) {
+            console.log(`[OK] ${remoteName} ya está actualizado en GitHub (${(stat.size / 1024).toFixed(1)} KB).`);
+            return;
+          } else {
+            console.log(`Eliminando versión anterior de ${a.name} (ID: ${a.id})...`);
+            await apiRequest({
+              hostname: 'api.github.com',
+              path: `/repos/${repo}/releases/assets/${a.id}`,
+              method: 'DELETE',
+              headers: {
+                'User-Agent': 'TRIBU-Release-Script',
+                'Authorization': `token ${token}`,
+                'Accept': 'application/vnd.github.v3+json'
+              }
+            });
+          }
+        }
+      }
+    }
+
+    console.log(`Subiendo ${remoteName} (${(stat.size / (1024 * 1024)).toFixed(2)} MB)...`);
+    const uploadUrl = new URL(release.upload_url.replace(/\{(\?.*)?\}/, ''));
+    uploadUrl.searchParams.set('name', remoteName);
+
+    const fileStream = fs.createReadStream(localPath);
+
+    return new Promise((resolve, reject) => {
+      const uploadReq = https.request({
+        hostname: uploadUrl.hostname,
+        path: uploadUrl.pathname + uploadUrl.search,
+        method: 'POST',
+        headers: {
+          'User-Agent': 'TRIBU-Release-Script',
+          'Authorization': `token ${token}`,
+          'Content-Type': remoteName.endsWith('.yml') ? 'text/yaml' : 'application/octet-stream',
+          'Content-Length': stat.size,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      }, (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => {
+          if (res.statusCode === 201) {
+            console.log(`\n🎉 [OK] ${remoteName} subido correctamente.`);
+            resolve();
+          } else {
+            console.error(`Error subiendo ${remoteName}:`, res.statusCode, body);
+            reject(new Error(`Fallo subida ${remoteName}`));
+          }
+        });
+      });
+
+      uploadReq.on('error', (err) => {
+        console.error(`Error de red subiendo ${remoteName}:`, err);
+        reject(err);
+      });
+
+      let uploadedBytes = 0;
+      fileStream.on('data', (chunk) => {
+        uploadedBytes += chunk.length;
+        const pct = Math.round((uploadedBytes / stat.size) * 100);
+        process.stdout.write(`\rProgreso [${remoteName}]: ${pct}% (${(uploadedBytes / (1024 * 1024)).toFixed(1)} / ${(stat.size / (1024 * 1024)).toFixed(1)} MB)`);
+      });
+
+      fileStream.pipe(uploadReq);
+    });
+  }
+
+  for (const item of filesToUpload) {
+    await uploadFile(item);
+  }
+
+  console.log(`\n🚀 ¡Release ${tag} publicado exitosamente en GitHub!`);
+  console.log(`URL del Release: ${release.html_url}`);
 }
 
 main().catch(console.error);

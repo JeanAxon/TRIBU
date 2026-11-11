@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { autoUpdater } = require('electron-updater');
 
 // Fijar nombre de la aplicación y ruta userData consistente en todas las instancias y reinicios
 app.setName('tribu-sri');
@@ -170,11 +171,91 @@ function setupIpcHandlers() {
     }
     return false;
   });
+
+  // Manejadores de Actualización Automática (Auto-Updater)
+  ipcMain.handle('updater:check', async () => {
+    if (app.isPackaged) {
+      return autoUpdater.checkForUpdates();
+    }
+    return { status: 'dev-mode' };
+  });
+
+  ipcMain.handle('updater:quit-and-install', async () => {
+    autoUpdater.quitAndInstall();
+    return true;
+  });
+}
+
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('checking-for-update', () => {
+    console.log('[AutoUpdater] Comprobando actualizaciones en GitHub...');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater:status', { status: 'checking' });
+    }
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('[AutoUpdater] Nueva versión disponible en GitHub:', info.version);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater:status', {
+        status: 'available',
+        version: info.version
+      });
+    }
+  });
+
+  autoUpdater.on('update-not-available', (info) => {
+    console.log('[AutoUpdater] TRIBU está en la versión más reciente.');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater:status', { status: 'not-available' });
+    }
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater:status', {
+        status: 'downloading',
+        percent: Math.round(progressObj.percent)
+      });
+    }
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('[AutoUpdater] Actualización lista para instalar:', info.version);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater:status', {
+        status: 'downloaded',
+        version: info.version
+      });
+    }
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.warn('[AutoUpdater] Aviso comprobando actualizaciones:', err ? err.message : err);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater:status', {
+        status: 'error',
+        message: err ? err.message : 'Error desconocido'
+      });
+    }
+  });
+
+  if (app.isPackaged) {
+    setTimeout(() => {
+      autoUpdater.checkForUpdatesAndNotify().catch(e => {
+        console.warn('[AutoUpdater] Excepción al comprobar actualización:', e.message);
+      });
+    }, 4500);
+  }
 }
 
 app.whenReady().then(() => {
   setupIpcHandlers();
   createWindow();
+  setupAutoUpdater();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

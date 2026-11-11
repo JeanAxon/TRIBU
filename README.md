@@ -8,10 +8,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/JeanAxon/TRIBU/releases/download/v0.1.0-alpha/TRIBU-Setup-0.1.0-alpha.exe">
+  <a href="https://github.com/JeanAxon/TRIBU/releases/download/v0.1.1-alpha/TRIBU-Setup-0.1.1-alpha.exe">
     <img src="https://img.shields.io/badge/Descargar_TRIBU-Windows_(.exe)-0c4597?style=for-the-badge&logo=windows&logoColor=white" alt="Descargar para Windows">
   </a>
-  <img src="https://img.shields.io/badge/Versi%C3%B3n-v0.1.0--alpha-00d293?style=for-the-badge" alt="Versión Alpha">
+  <img src="https://img.shields.io/badge/Versi%C3%B3n-v0.1.1--alpha-00d293?style=for-the-badge" alt="Versión Alpha">
   <img src="https://img.shields.io/badge/Licencia-Privada-1e293b?style=for-the-badge" alt="Licencia">
 </p>
 
@@ -35,7 +35,7 @@
 
 ## 🚀 Instalación Rápida (Windows)
 
-1. **Descarga el instalador:** Haz clic en el botón superior o descarga directamente **[TRIBU-Setup-0.1.0-alpha.exe](https://github.com/JeanAxon/TRIBU/releases/download/v0.1.0-alpha/TRIBU-Setup-0.1.0-alpha.exe)**.
+1. **Descarga el instalador:** Haz clic en el botón azul superior o descarga directamente el archivo ejecutable desde **[GitHub Releases](https://github.com/JeanAxon/TRIBU/releases/latest)**.
 2. **Ejecuta el archivo:** Sigue los pasos del asistente de instalación.
 3. **¡Listo!** Abre TRIBU desde el acceso directo de tu Escritorio o Menú Inicio.
 

@@ -1,6 +1,6 @@
 {
   "name": "tribu-sri",
-  "version": "0.1.0-alpha",
+  "version": "0.1.1-alpha",
   "description": "Mini-navegador y gestor de clientes para automatización del SRI Ecuador",
   "main": "src/main/main.js",
   "scripts": {
@@ -27,6 +27,13 @@
     "directories": {
       "output": "dist"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "JeanAxon",
+        "repo": "TRIBU"
+      }
+    ],
     "files": [
       "src/**/*",
       "package.json"
@@ -43,6 +50,7 @@
       ]
     },
     "nsis": {
+      "artifactName": "${productName}-Setup-${version}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
@@ -57,6 +65,7 @@
     "electron-builder": "^26.18.0"
   },
   "dependencies": {
+    "electron-updater": "^6.8.11",
     "fast-xml-parser": "^5.12.0"
   }
 }
