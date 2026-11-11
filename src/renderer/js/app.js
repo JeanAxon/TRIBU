@@ -97,6 +97,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Botón reiniciar y actualizar en el popover
   if (btnPopoverRestart) {
     btnPopoverRestart.addEventListener('click', () => {
+      btnPopoverRestart.disabled = true;
+      btnPopoverRestart.textContent = 'Actualizando...';
       if (window.tribuApi && typeof window.tribuApi.quitAndInstallUpdate === 'function') {
         window.tribuApi.quitAndInstallUpdate();
       }
@@ -172,6 +174,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (btnUpdateRestart) {
       btnUpdateRestart.addEventListener('click', () => {
+        btnUpdateRestart.disabled = true;
+        btnUpdateRestart.textContent = 'Actualizando...';
         window.tribuApi.quitAndInstallUpdate();
       });
     }

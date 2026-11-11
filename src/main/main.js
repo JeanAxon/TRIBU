@@ -187,7 +187,9 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('updater:quit-and-install', async () => {
-    autoUpdater.quitAndInstall();
+    // isSilent: true (actualización silenciosa sin asistente de reinstalación)
+    // isForceRunAfter: true (reinicia inmediatamente la app actualizada)
+    autoUpdater.quitAndInstall(true, true);
     return true;
   });
 }
