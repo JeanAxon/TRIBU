@@ -8,13 +8,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/JeanAxon/TRIBU/releases/download/v0.1.1-alpha/TRIBU-Setup-0.1.1-alpha.exe">
+  <a href="https://github.com/JeanAxon/TRIBU/releases/download/v0.1.3/TRIBU-Setup-0.1.3.exe">
     <img src="https://img.shields.io/badge/Descargar-Windows_(.exe)-0c4597?style=for-the-badge&logo=windows&logoColor=white" alt="Descargar para Windows">
   </a>
-  <a href="https://github.com/JeanAxon/TRIBU/releases/download/v0.1.1-alpha/TRIBU-0.1.1-alpha-mac-universal.dmg">
+  <a href="https://github.com/JeanAxon/TRIBU/releases/download/v0.1.3/TRIBU-0.1.3-mac-universal.dmg">
     <img src="https://img.shields.io/badge/Descargar-macOS_(.dmg)-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Descargar para macOS">
   </a>
-  <img src="https://img.shields.io/badge/Versi%C3%B3n-v0.1.1--alpha-00d293?style=for-the-badge" alt="Versión Alpha">
+  <img src="https://img.shields.io/badge/Versi%C3%B3n-v0.1.3-00d293?style=for-the-badge" alt="Versión Oficial">
   <img src="https://img.shields.io/badge/Licencia-Privada-1e293b?style=for-the-badge" alt="Licencia">
 </p>
 

@@ -33,6 +33,7 @@ contextBridge.exposeInMainWorld('tribuApi', {
   getNextPageScript: () => ipcRenderer.invoke('sri:get-next-page-script'),
   getInspectDiscapacidadScript: () => ipcRenderer.invoke('sri:get-inspect-discapacidad-script'),
   getApplyDiscapacidadScript: (config) => ipcRenderer.invoke('sri:get-apply-discapacidad-script', config),
+  getActivateAllReclamoRowsScript: () => ipcRenderer.invoke('sri:get-activate-all-reclamo-rows-script'),
   getProcessReclamoRowScript: (rowIndex) => ipcRenderer.invoke('sri:get-process-reclamo-row-script', rowIndex),
   dumpDebug: (data) => ipcRenderer.invoke('sri:dump-debug', data),
 

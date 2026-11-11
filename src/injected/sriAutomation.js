@@ -693,31 +693,69 @@ function getApplyDiscapacidadIvaScript(config) {
         updatedCount++;
       }
 
+      // Marcar casilla de verificación primero para habilitar fila en SRI
+      if (shouldCheckAll && cellCheck) {
+        const chk = cellCheck.querySelector('input[type="checkbox"]');
+        const primeBox = cellCheck.querySelector('.ui-chkbox-box');
+        if (primeBox && !primeBox.classList.contains('ui-state-active')) {
+          primeBox.click();
+        } else if (chk && !chk.checked) {
+          chk.click();
+        }
+        if (chk && !chk.checked) {
+          chk.checked = true;
+          chk.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+
       if (tipoGastoTarget && cellGasto) {
         const selectEl = cellGasto.querySelector('select');
+        const menuEl = cellGasto.querySelector('.ui-selectonemenu');
+        const labelEl = cellGasto.querySelector('.ui-selectonemenu-label, label');
+
+        if (menuEl) {
+          menuEl.classList.remove('ui-state-disabled');
+          menuEl.removeAttribute('disabled');
+        }
+        if (selectEl) {
+          selectEl.disabled = false;
+          selectEl.removeAttribute('disabled');
+        }
+        if (labelEl) {
+          labelEl.removeAttribute('disabled');
+          labelEl.setAttribute('aria-disabled', 'false');
+        }
+
         if (selectEl) {
           let matched = false;
-          Array.from(selectEl.options).forEach(opt => {
+          let matchedVal = null;
+          let matchedLabel = '';
+          Array.from(selectEl.options).forEach((opt, idx) => {
             const optText = (opt.textContent || '').toLowerCase().trim();
             const optVal = (opt.value || '').toLowerCase().trim();
             if (!matched && (optText.includes(tipoGastoTarget) || optVal.includes(tipoGastoTarget))) {
+              selectEl.selectedIndex = idx;
               selectEl.value = opt.value;
+              matchedVal = opt.value;
+              matchedLabel = (opt.textContent || '').trim();
               matched = true;
             }
           });
           if (matched) {
-            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+            if (labelEl && matchedLabel) {
+              labelEl.textContent = matchedLabel;
+              labelEl.innerText = matchedLabel;
+            }
             selectEl.dispatchEvent(new Event('input', { bubbles: true }));
-          }
-        }
-      }
+            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
 
-      if (shouldCheckAll && cellCheck) {
-        const chk = cellCheck.querySelector('input[type="checkbox"]');
-        if (chk && !chk.checked) {
-          chk.checked = true;
-          chk.dispatchEvent(new Event('change', { bubbles: true }));
-          chk.dispatchEvent(new Event('click', { bubbles: true }));
+            try {
+              if (window.PrimeFaces && typeof window.PrimeFaces.ab === 'function' && selectEl.id) {
+                const baseId = selectEl.id.replace(/_input$/, '');
+                window.PrimeFaces.ab({ s: baseId, e: 'change', f: 'j_idt164', p: baseId, ps: true });
+              }
+            } catch (e) {}
+          }
         }
       }
     });
@@ -809,12 +847,31 @@ function getProcessReclamoRowScript(rowIndex) {
 
     const row = rows[rIndex];
     const cells = Array.from(row.querySelectorAll('td'));
+    const win = targetDoc.defaultView || window;
 
-    // 1. Extraer Razón Social de la columna 2 (NUNCA MODIFICAR ESTA CELDA)
+    // 1. Extraer Razón Social de la fila (buscar en celda 2 o celda de texto)
     let cellRazon = cells.length > 2 ? cells[2] : null;
-    const razonSocial = (cellRazon ? (cellRazon.innerText || cellRazon.textContent) : '').trim();
+    let razonSocial = (cellRazon ? (cellRazon.innerText || cellRazon.textContent) : '').trim();
+    if (!razonSocial && cells.length > 1) {
+      for (let i = 1; i < Math.min(cells.length, 5); i++) {
+        const txt = (cells[i].innerText || cells[i].textContent || '').trim();
+        if (txt && !/^\d{4}-\d{2}-\d{2}$/.test(txt) && !/^\d+(\.\d+)?$/.test(txt) && txt !== 'RIDE') {
+          razonSocial = txt;
+          cellRazon = cells[i];
+          break;
+        }
+      }
+    }
 
-    // 2. Inferencia del tipo de gasto según razón social
+    // 2. Inferencia y normalización del tipo de gasto según razón social
+    function norm(str) {
+      return (str || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+    }
+
     function inferTipoGasto(name) {
       const n = (name || '').toLowerCase();
       if (/farmaci|fybeca|sana\s*sana|medifarm|hospital|clinic|medic|salud|drogueri|cruz\s*azul|laboratorio|optica|dental|odontolog|biomedic/i.test(n)) {
@@ -829,35 +886,97 @@ function getProcessReclamoRowScript(rowIndex) {
       if (/inmobiliari|arriendo|alquiler|condominio|ferreter|electric|pintur|plomer|agua|luz|vivienda|constructor/i.test(n)) {
         return 'vivienda';
       }
-      // Predeterminado: alimentación (TUTI, TÍA, Supermaxi, Ecomaxi, panaderías, restaurantes, autoservicios, etc.)
       return 'alimentación';
     }
 
     const tipoGastoTarget = inferTipoGasto(razonSocial);
+    const targetNorm = norm(tipoGastoTarget);
 
-    // Mapeo de opciones en PrimeFaces del SRI:
-    // _0: Seleccione, _1: alimentación, _2: educación, _3: salud, _4: vestimenta, _5: vivienda
-    let targetIdx = 1; // alimentación por defecto
-    let categoryLabel = 'alimentación';
+    // 3. PASO 1: VERIFICAR Y ASEGURAR QUE LA FILA ESTÁ ACTIVADA
+    let cellCheck = null;
+    for (const c of cells) {
+      if (c.querySelector('input[type="checkbox"], .ui-chkbox')) {
+        cellCheck = c;
+        break;
+      }
+    }
+    if (!cellCheck && cells.length > 8) cellCheck = cells[8];
 
-    if (tipoGastoTarget === 'salud') {
-      targetIdx = 3;
-      categoryLabel = 'salud';
-    } else if (tipoGastoTarget === 'educación') {
-      targetIdx = 2;
-      categoryLabel = 'educación';
-    } else if (tipoGastoTarget === 'vestimenta') {
-      targetIdx = 4;
-      categoryLabel = 'vestimenta';
-    } else if (tipoGastoTarget === 'vivienda') {
-      targetIdx = 5;
-      categoryLabel = 'vivienda';
+    const chk = (cellCheck ? cellCheck.querySelector('input[type="checkbox"]') : null) || row.querySelector('input[type="checkbox"]');
+    const primeBox = (cellCheck ? cellCheck.querySelector('.ui-chkbox-box') : null) || row.querySelector('.ui-chkbox-box');
+    const primeIcon = (cellCheck ? cellCheck.querySelector('.ui-chkbox-icon') : null) || row.querySelector('.ui-chkbox-icon');
+
+    const isCheckedInitial = (chk && chk.checked) || (primeBox && primeBox.classList.contains('ui-state-active'));
+    if (!isCheckedInitial) {
+      if (primeBox) {
+        try {
+          primeBox.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, cancelable: true, view: win }));
+          primeBox.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: win }));
+          primeBox.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: win }));
+        } catch (e) {}
+        primeBox.click();
+      } else if (chk) {
+        chk.click();
+      }
+
+      if (chk && !chk.checked) {
+        chk.checked = true;
+        chk.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      if (primeBox && !primeBox.classList.contains('ui-state-active')) {
+        primeBox.classList.add('ui-state-active');
+        if (primeIcon) {
+          primeIcon.classList.remove('ui-icon-blank');
+          primeIcon.classList.add('ui-icon-check');
+        }
+      }
     }
 
-    const win = targetDoc.defaultView || window;
+    // 4. PASO 2: COLOCAR PRIMERO EL MONTO DEL IVA SOLICITADO
+    let montoIvaVal = '0.00';
+    let cellMonto = null;
+    let cellInput = null;
 
-    // 3. Localizar celda y componentes de Tipo de Gasto
-    // Estrategia combinada: por selector de ID específico PrimeFaces y por estructura de celda
+    for (let i = 0; i < cells.length; i++) {
+      const inp = cells[i].querySelector('input[type="text"], input:not([type="checkbox"]):not([type="hidden"])');
+      if (inp) {
+        cellInput = cells[i];
+        if (i > 0) cellMonto = cells[i - 1];
+        break;
+      }
+    }
+    if (!cellInput && cells.length > 6) cellInput = cells[6];
+    if (!cellMonto && cells.length > 5) cellMonto = cells[5];
+
+    if (cellMonto) {
+      const rawText = (cellMonto.innerText || cellMonto.textContent || '').replace(',', '.').replace(/[^0-9.]/g, '');
+      const parsed = parseFloat(rawText);
+      if (!isNaN(parsed) && parsed > 0) {
+        montoIvaVal = parsed.toFixed(2);
+      }
+    }
+
+    const inputEl = (cellInput ? cellInput.querySelector('input[type="text"], input:not([type="checkbox"]):not([type="hidden"])') : null) || row.querySelector('input[type="text"]');
+    if (inputEl) {
+      const curVal = (inputEl.value || '').trim();
+      const curNum = parseFloat(curVal.replace(',', '.'));
+
+      if (!curVal || isNaN(curNum) || curNum === 0) {
+        inputEl.focus();
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+        if (setter) {
+          setter.call(inputEl, montoIvaVal);
+        } else {
+          inputEl.value = montoIvaVal;
+        }
+        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+        inputEl.dispatchEvent(new Event('blur', { bubbles: true }));
+      }
+    }
+
+    // 5. PASO 3: COLOCAR EL TIPO DE GASTO EN EL DESPLEGABLE
     let cellGasto = null;
     for (const c of cells) {
       if (c.querySelector('.ui-selectonemenu, select, [id*="cmbTipoGasto"]')) {
@@ -894,50 +1013,74 @@ function getProcessReclamoRowScript(rowIndex) {
     }
 
     const panelEl = (baseId ? targetDoc.getElementById(baseId + '_panel') : null)
-      || targetDoc.querySelector('[id*="tblFacturas:' + rIndex + ':cmbTipoGasto_panel"], [id$=":' + rIndex + ':cmbTipoGasto_panel"]');
+      || targetDoc.querySelector('[id*="tblFacturas:' + rIndex + ':cmbTipoGasto_panel"], [id$=":' + rIndex + ':cmbTipoGasto_panel"]')
+      || (cellGasto ? cellGasto.querySelector('.ui-selectonemenu-panel') : null);
 
-    // Localizar elemento <li> en el panel (por ID directo o por texto/data-label)
-    let targetLi = targetDoc.querySelector('[id*="tblFacturas:' + rIndex + ':cmbTipoGasto_' + targetIdx + '"]');
-    if (!targetLi && panelEl) {
+    // Habilitar forzadamente en DOM cualquier estado deshabilitado que bloquee la selección
+    if (menu) {
+      menu.classList.remove('ui-state-disabled');
+      menu.removeAttribute('disabled');
+    }
+    if (selectEl) {
+      selectEl.disabled = false;
+      selectEl.removeAttribute('disabled');
+    }
+    if (labelEl) {
+      labelEl.removeAttribute('disabled');
+      labelEl.setAttribute('aria-disabled', 'false');
+    }
+
+    // Mapeo dinámico de opciones según el HTML real del SRI (insensible a acentos/codificación)
+    let matchedOption = null;
+    let matchedVal = '';
+    let matchedLabel = tipoGastoTarget;
+    let matchedIndex = -1;
+
+    if (selectEl && selectEl.options && selectEl.options.length > 0) {
+      for (let i = 0; i < selectEl.options.length; i++) {
+        const opt = selectEl.options[i];
+        const optTxt = norm(opt.textContent || opt.text || '');
+        const optVal = norm(opt.value || '');
+        if (optTxt && !optTxt.includes('seleccione') && (optTxt.includes(targetNorm) || optVal.includes(targetNorm))) {
+          matchedOption = opt;
+          matchedVal = opt.value;
+          matchedLabel = (opt.textContent || opt.text || '').trim();
+          matchedIndex = i;
+          break;
+        }
+      }
+      // Fallback si no hubo coincidencia exacta (tomar la primera opción válida de gasto)
+      if (!matchedOption && selectEl.options.length > 1) {
+        for (let i = 1; i < selectEl.options.length; i++) {
+          const opt = selectEl.options[i];
+          const optTxt = norm(opt.textContent || opt.text || '');
+          if (optTxt && !optTxt.includes('seleccione')) {
+            matchedOption = opt;
+            matchedVal = opt.value;
+            matchedLabel = (opt.textContent || opt.text || '').trim();
+            matchedIndex = i;
+            break;
+          }
+        }
+      }
+    }
+
+    // Localizar elemento <li> en el panel flotante
+    let targetLi = null;
+    if (panelEl) {
       const lis = Array.from(panelEl.querySelectorAll('li'));
       targetLi = lis.find(li => {
-        const lbl = (li.getAttribute('data-label') || li.textContent || '').trim().toLowerCase();
-        return lbl.includes(categoryLabel.toLowerCase()) || (targetIdx === 1 && lbl.includes('alim'));
-      }) || lis[targetIdx];
+        const lbl = norm(li.getAttribute('data-label') || li.textContent || '');
+        return lbl && !lbl.includes('seleccione') && lbl.includes(targetNorm);
+      }) || lis.find(li => li.id && matchedIndex >= 0 && li.id.endsWith('_' + matchedIndex)) || (lis.length > 1 ? lis[1] : null);
+    }
+    if (!targetLi && baseId && matchedIndex >= 0) {
+      targetLi = targetDoc.getElementById(baseId + '_' + matchedIndex)
+        || targetDoc.querySelector('[id*="' + baseId + '_' + matchedIndex + '"]');
     }
 
-    // Paso 1: Abrir el menú para activar estado interno de PrimeFaces
-    try {
-      if (triggerEl) {
-        triggerEl.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: win }));
-        triggerEl.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: win }));
-        triggerEl.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
-      } else if (menu) {
-        menu.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
-      }
-      if (win.$ && triggerEl) {
-        win.$(triggerEl).trigger('click');
-      }
-    } catch (e) {}
-
-    // Paso 2: Simular clic real del usuario sobre el elemento <li> de la opción
-    if (targetLi) {
-      ['mouseover', 'mouseenter', 'mousedown', 'mouseup', 'click'].forEach(evtType => {
-        try {
-          targetLi.dispatchEvent(new MouseEvent(evtType, { bubbles: true, cancelable: true, view: win }));
-        } catch (e) {}
-      });
-      try {
-        targetLi.click();
-      } catch (e) {}
-      if (win.$) {
-        try {
-          win.$(targetLi).trigger('mouseenter').trigger('mousedown').trigger('mouseup').trigger('click');
-        } catch (e) {}
-      }
-    }
-
-    // Paso 3: Sincronización directa vía widget de PrimeFaces
+    // Interacción con el widget PrimeFaces
+    const jq = (win.PrimeFaces && win.PrimeFaces.$) || win.jQuery || win.$;
     let widget = null;
     try {
       const cleanWidgetVar = baseId ? 'widget_' + baseId.replace(/:/g, '_') : '';
@@ -960,28 +1103,54 @@ function getProcessReclamoRowScript(rowIndex) {
           }
         }
       }
-      if (!widget && win.$ && menu) {
-        widget = win.$(menu).data('widget') || win.$(menu).data('primefaces-widget');
+      if (!widget && jq && menu) {
+        widget = jq(menu).data('widget') || jq(menu).data('primefaces-widget');
       }
     } catch (e) {}
 
+    // Disparar click en targetLi vía jQuery de PrimeFaces si está disponible
+    if (targetLi) {
+      if (jq) {
+        try {
+          jq(targetLi).trigger('mouseenter').trigger('mousedown').trigger('mouseup').trigger('click.ui-selectonemenu').trigger('click');
+        } catch (e) {}
+      }
+      try {
+        targetLi.click();
+      } catch (e) {}
+    }
+
     if (widget) {
       try {
-        if (targetLi && win.$ && typeof widget.selectItem === 'function') {
-          widget.selectItem(win.$(targetLi));
+        if (typeof widget.enable === 'function') {
+          widget.enable();
+        } else {
+          widget.disabled = false;
         }
       } catch (e) {}
+
       try {
-        if (typeof widget.selectValue === 'function') {
-          const optVal = (selectEl && selectEl.options[targetIdx]) ? selectEl.options[targetIdx].value : String(targetIdx);
-          widget.selectValue(optVal);
+        if (targetLi && jq && typeof widget.selectItem === 'function') {
+          widget.selectItem(jq(targetLi));
         }
       } catch (e) {}
+
+      try {
+        // En PrimeFaces, selectValue busca por data-label (ej. "alimentación"), no por valor numérico
+        if (typeof widget.selectValue === 'function') {
+          const success = widget.selectValue(matchedLabel);
+          if (!success && matchedVal) {
+            widget.selectValue(matchedVal);
+          }
+        }
+      } catch (e) {}
+
       try {
         if (typeof widget.triggerChange === 'function') {
           widget.triggerChange();
         }
       } catch (e) {}
+
       try {
         if (typeof widget.hide === 'function') {
           widget.hide();
@@ -989,68 +1158,48 @@ function getProcessReclamoRowScript(rowIndex) {
       } catch (e) {}
     }
 
-    // Paso 4: Actualización del <select> HTML oculto
-    if (selectEl) {
-      let matchedIdx = -1;
-      let matchedVal = null;
+    // Actualización del <select> nativo
+    if (selectEl && matchedIndex >= 0) {
+      selectEl.selectedIndex = matchedIndex;
+      if (matchedVal) selectEl.value = matchedVal;
 
-      for (let oIdx = 0; oIdx < selectEl.options.length; oIdx++) {
-        const opt = selectEl.options[oIdx];
-        const optTxt = (opt.textContent || opt.text || '').toLowerCase().trim();
-        const optVal = (opt.value || '').toLowerCase().trim();
-        if (optTxt.includes(categoryLabel.toLowerCase()) || optVal.includes(categoryLabel.toLowerCase()) ||
-            (targetIdx === 1 && (optTxt.includes('alim') || optVal.includes('alim')))) {
-          matchedIdx = oIdx;
-          matchedVal = opt.value;
-          break;
-        }
+      for (let i = 0; i < selectEl.options.length; i++) {
+        selectEl.options[i].selected = (i === matchedIndex);
       }
 
-      if (matchedIdx === -1 && selectEl.options[targetIdx]) {
-        matchedIdx = targetIdx;
-        matchedVal = selectEl.options[targetIdx].value;
-      }
+      try {
+        const s1 = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'selectedIndex').set;
+        if (s1) s1.call(selectEl, matchedIndex);
+      } catch (e) {}
 
-      if (matchedIdx >= 0) {
-        for (let oIdx = 0; oIdx < selectEl.options.length; oIdx++) {
-          selectEl.options[oIdx].selected = (oIdx === matchedIdx);
-        }
-        selectEl.selectedIndex = matchedIdx;
-        if (matchedVal !== null) selectEl.value = matchedVal;
+      try {
+        const s2 = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set;
+        if (s2) s2.call(selectEl, matchedVal);
+      } catch (e) {}
 
-        try {
-          const s1 = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'selectedIndex').set;
-          if (s1) s1.call(selectEl, matchedIdx);
-        } catch (e) {}
-
-        try {
-          const s2 = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set;
-          if (s2) s2.call(selectEl, matchedVal);
-        } catch (e) {}
-
-        selectEl.dispatchEvent(new Event('input', { bubbles: true }));
-        selectEl.dispatchEvent(new Event('change', { bubbles: true }));
-      }
+      selectEl.dispatchEvent(new Event('input', { bubbles: true }));
+      selectEl.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
-    // Paso 5: Actualizar texto visible en el <label> y limpiar panel flotante
+    // Disparar directamente el AJAX de PrimeFaces si el elemento tiene la directiva onchange
+    try {
+      if (win.PrimeFaces && typeof win.PrimeFaces.ab === 'function' && baseId) {
+        const formEl = selectEl ? selectEl.closest('form') : (menu ? menu.closest('form') : null);
+        const formId = formEl ? formEl.id : 'j_idt164';
+        win.PrimeFaces.ab({
+          s: baseId,
+          e: 'change',
+          f: formId,
+          p: baseId,
+          ps: true
+        });
+      }
+    } catch (e) {}
+
+    // Actualizar label visual y panel
     if (labelEl) {
-      labelEl.textContent = categoryLabel;
-      labelEl.innerText = categoryLabel;
-      labelEl.innerHTML = categoryLabel;
-    }
-
-    if (cellGasto) {
-      const cellEls = Array.from(cellGasto.querySelectorAll('*'));
-      cellEls.forEach(el => {
-        if (el.tagName !== 'SELECT' && el.tagName !== 'OPTION') {
-          const txt = (el.innerText || el.textContent || '').trim();
-          if (txt.toLowerCase() === 'seleccione') {
-            el.innerText = categoryLabel;
-            el.textContent = categoryLabel;
-          }
-        }
-      });
+      labelEl.textContent = matchedLabel;
+      labelEl.innerText = matchedLabel;
     }
 
     if (panelEl) {
@@ -1063,80 +1212,24 @@ function getProcessReclamoRowScript(rowIndex) {
       panelEl.classList.add('ui-helper-hidden');
     }
 
-    if (menu) {
-      menu.classList.remove('ui-state-focus');
+    // 6. PASO 4: RECONFIRMAR QUE LA CASILLA PERMANECE MARCADA
+    if (chk && !chk.checked) {
+      chk.checked = true;
+      chk.dispatchEvent(new Event('change', { bubbles: true }));
     }
-
-    // 4. Colocar el monto del IVA en caso de que esté en cero o vacío
-    let montoIvaVal = '0.00';
-    let cellMonto = cells.length > 5 ? cells[5] : null;
-    let cellInput = cells.length > 6 ? cells[6] : null;
-
-    if (cellMonto) {
-      const rawText = (cellMonto.innerText || cellMonto.textContent || '').replace(',', '.').replace(/[^0-9.]/g, '');
-      const parsed = parseFloat(rawText);
-      if (!isNaN(parsed) && parsed > 0) {
-        montoIvaVal = parsed.toFixed(2);
+    if (primeBox && !primeBox.classList.contains('ui-state-active')) {
+      primeBox.classList.add('ui-state-active');
+      if (primeIcon) {
+        primeIcon.classList.remove('ui-icon-blank');
+        primeIcon.classList.add('ui-icon-check');
       }
-    }
-
-    const inputEl = (cellInput ? cellInput.querySelector('input[type="text"], input:not([type="checkbox"]):not([type="hidden"])') : null) || row.querySelector('input[type="text"]');
-    if (inputEl) {
-      const curVal = (inputEl.value || '').trim();
-      const curNum = parseFloat(curVal.replace(',', '.'));
-
-      if (!curVal || isNaN(curNum) || curNum === 0) {
-        inputEl.focus();
-        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-        setter.call(inputEl, montoIvaVal);
-        inputEl.value = montoIvaVal;
-        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
-        inputEl.dispatchEvent(new Event('blur', { bubbles: true }));
-      }
-    }
-
-    // 5. Marcar la palomita (Seleccionar)
-    const cellCheck = cells.length > 8 ? cells[8] : null;
-    const chk = (cellCheck ? cellCheck.querySelector('input[type="checkbox"]') : null) || row.querySelector('input[type="checkbox"]');
-    const primeBox = (cellCheck ? cellCheck.querySelector('.ui-chkbox-box') : null) || row.querySelector('.ui-chkbox-box');
-    const primeIcon = (cellCheck ? cellCheck.querySelector('.ui-chkbox-icon') : null) || row.querySelector('.ui-chkbox-icon');
-
-    const isChecked = (chk && chk.checked) || (primeBox && primeBox.classList.contains('ui-state-active'));
-
-    if (!isChecked) {
-      if (primeBox) {
-        primeBox.click();
-      } else if (chk) {
-        chk.click();
-      }
-
-      if (chk && !chk.checked) {
-        chk.checked = true;
-        chk.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-
-      if (primeBox && !primeBox.classList.contains('ui-state-active')) {
-        primeBox.classList.add('ui-state-active');
-        if (primeIcon) {
-          primeIcon.classList.remove('ui-icon-blank');
-          primeIcon.classList.add('ui-icon-check');
-        }
-      }
-    }
-
-    // 6. Verificación posterior: asegurar que el texto del label no haya sido revertido
-    if (labelEl && (labelEl.textContent || '').trim().toLowerCase() === 'seleccione') {
-      labelEl.textContent = categoryLabel;
-      labelEl.innerText = categoryLabel;
-      labelEl.innerHTML = categoryLabel;
     }
 
     return {
       success: true,
       index: rIndex,
       razonSocial: razonSocial || `Fila ${rIndex + 1}`,
-      tipoGasto: categoryLabel,
+      tipoGasto: matchedLabel,
       montoIva: montoIvaVal,
       debug: {
         rIndex: rIndex,
@@ -1162,6 +1255,92 @@ function getProcessReclamoRowScript(rowIndex) {
   return '(' + fn.toString() + ')(' + rowIndex + ');';
 }
 
+// Script para Fase 1: Activar y seleccionar todas las filas de la tabla de comprobantes
+function getActivateAllReclamoRowsScript() {
+  const fn = function() {
+    function findDataRows(doc) {
+      const facturasBody = doc.querySelector('tbody[id*="tblFacturas"], [id*="tblFacturas"] tbody');
+      if (facturasBody) {
+        const trs = Array.from(facturasBody.querySelectorAll('tr')).filter(r => 
+          !r.classList.contains('ui-datatable-empty-message') && r.querySelectorAll('td').length >= 4
+        );
+        if (trs.length > 0) return trs;
+      }
+      const allTrs = Array.from(doc.querySelectorAll('tr'));
+      return allTrs.filter(r => {
+        if (r.closest('thead, tfoot')) return false;
+        if (r.classList.contains('ui-datatable-empty-message')) return false;
+        return r.querySelectorAll('td').length >= 4 && (r.querySelector('input[type="checkbox"]') || r.querySelector('.ui-chkbox'));
+      });
+    }
+
+    let rows = findDataRows(document);
+    let targetDoc = document;
+    if (rows.length === 0) {
+      const iframes = Array.from(document.querySelectorAll('iframe'));
+      for (const ifr of iframes) {
+        try {
+          const doc = ifr.contentDocument || ifr.contentWindow.document;
+          if (doc) {
+            const ifrRows = findDataRows(doc);
+            if (ifrRows.length > 0) {
+              rows = ifrRows;
+              targetDoc = doc;
+              break;
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    const win = targetDoc.defaultView || window;
+    let activatedCount = 0;
+
+    // Activar cada fila de comprobante
+    rows.forEach(row => {
+      const chk = row.querySelector('input[type="checkbox"]');
+      const primeBox = row.querySelector('.ui-chkbox-box');
+      const primeIcon = row.querySelector('.ui-chkbox-icon');
+
+      const isChecked = (chk && chk.checked) || (primeBox && primeBox.classList.contains('ui-state-active'));
+      if (!isChecked) {
+        if (primeBox) {
+          try {
+            primeBox.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, cancelable: true, view: win }));
+            primeBox.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: win }));
+            primeBox.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: win }));
+          } catch (e) {}
+          primeBox.click();
+        } else if (chk) {
+          chk.click();
+        }
+
+        if (chk && !chk.checked) {
+          chk.checked = true;
+          chk.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        if (primeBox && !primeBox.classList.contains('ui-state-active')) {
+          primeBox.classList.add('ui-state-active');
+          if (primeIcon) {
+            primeIcon.classList.remove('ui-icon-blank');
+            primeIcon.classList.add('ui-icon-check');
+          }
+        }
+        activatedCount++;
+      }
+    });
+
+    return {
+      success: true,
+      totalRows: rows.length,
+      activatedCount: activatedCount
+    };
+  };
+
+  return '(' + fn.toString() + ')();';
+}
+
 module.exports = {
   getLoginScript,
   getPasswordCaptureScript,
@@ -1170,5 +1349,6 @@ module.exports = {
   getNextPageScript,
   getInspectDiscapacidadTableScript,
   getApplyDiscapacidadIvaScript,
+  getActivateAllReclamoRowsScript,
   getProcessReclamoRowScript
 };

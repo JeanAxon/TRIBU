@@ -142,7 +142,7 @@
       <!-- Badge de Versión de la App -->
       <div class="header-version-pill" id="headerVersionPill" title="Versión de TRIBU instalada">
         <span class="version-bullet"></span>
-        <span class="version-label" id="appVersionText">v0.1.1-alpha</span>
+        <span class="version-label" id="appVersionText">v0.1.3</span>
       </div>
 
       <!-- Campana de Notificaciones de Actualización -->
@@ -159,7 +159,7 @@
         <div class="notification-popover" id="notificationPopover" aria-hidden="true">
           <div class="notification-popover-header">
             <span class="popover-title">Actualizaciones</span>
-            <span class="popover-version-tag" id="popoverCurrentVersion">v0.1.1-alpha</span>
+            <span class="popover-version-tag" id="popoverCurrentVersion">v0.1.3</span>
           </div>
 
           <div class="notification-popover-body">
@@ -210,8 +210,11 @@
         <!-- Barra de herramientas: Buscar, Total, Nuevo Cliente, Ajustes -->
         <div class="dashboard-toolbar">
           <div class="search-box">
-            <span class="search-label">Buscar:</span>
-            <input type="text" id="searchInput" placeholder="RUC o Razón Social...">
+            <svg class="search-box-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="searchInput" placeholder="Buscar por RUC o Razón Social..." aria-label="Buscar clientes por RUC o Razón Social">
           </div>
 
           <div class="dashboard-toolbar-actions">
@@ -240,10 +243,20 @@
 
         <!-- Estado Vacío -->
         <div id="emptyState" class="empty-state" style="display: none;">
-          <div class="empty-state-badge">[ Clientes ]</div>
-          <h3>Aún no has registrado ningún cliente</h3>
-          <p>Comienza agregando tu primer cliente con su RUC y Razón Social. Su carpeta de descargas se creará automáticamente.</p>
-          <button id="btnEmptyAddClient" class="btn btn-primary">+ Registrar Primer Cliente</button>
+          <div class="empty-state-icon-box">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+          <h3>Sin clientes registrados</h3>
+          <p>Registra a tu primer contribuyente ingresando su RUC y Razón Social. Su directorio local para comprobantes y sesiones se configurará automáticamente.</p>
+          <button id="btnEmptyAddClient" class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>Registrar Primer Cliente</span>
+          </button>
         </div>
 
       </div>
@@ -282,7 +295,12 @@
         <span id="automationBannerText">Listo para operar en el portal del SRI.</span>
         <div style="display: flex; align-items: center; gap: 8px;">
           <button id="btnCorregirClaveBanner" class="btn btn-secondary" style="display: none; padding: 3px 10px; font-size: 11px;">Corregir Clave</button>
-          <button id="btnCloseBanner" class="btn-close-banner">x</button>
+          <button id="btnCloseBanner" class="btn-close-banner" aria-label="Cerrar notificación">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -356,19 +374,19 @@
           <table class="ats-table" id="atsTable">
             <thead>
               <tr>
-                <th style="width: 40px;">#</th>
-                <th style="width: 90px;">Fecha</th>
-                <th style="width: 95px;">Tipo</th>
-                <th style="width: 140px;">Serie / Secuencial</th>
-                <th style="width: 120px;">RUC Emisor</th>
-                <th>Razón Social Emisor</th>
-                <th style="width: 220px;">Sustento Tributario (ATS)</th>
-                <th style="width: 95px; text-align: right;">Base 0%</th>
-                <th style="width: 95px; text-align: right;">Base Gravada</th>
-                <th style="width: 85px; text-align: right;">IVA</th>
-                <th style="width: 95px; text-align: right;">Total</th>
-                <th style="width: 70px;">Pago</th>
-                <th style="width: 90px; text-align: center;">Acción</th>
+                <th scope="col" style="width: 40px;">#</th>
+                <th scope="col" style="width: 90px;">Fecha</th>
+                <th scope="col" style="width: 95px;">Tipo</th>
+                <th scope="col" style="width: 140px;">Serie / Secuencial</th>
+                <th scope="col" style="width: 120px;">RUC Emisor</th>
+                <th scope="col">Razón Social Emisor</th>
+                <th scope="col" style="width: 220px;">Sustento Tributario (ATS)</th>
+                <th scope="col" style="width: 95px; text-align: right;">Base 0%</th>
+                <th scope="col" style="width: 95px; text-align: right;">Base Gravada</th>
+                <th scope="col" style="width: 85px; text-align: right;">IVA</th>
+                <th scope="col" style="width: 95px; text-align: right;">Total</th>
+                <th scope="col" style="width: 70px;">Pago</th>
+                <th scope="col" style="width: 90px; text-align: center;">Acción</th>
               </tr>
             </thead>
             <tbody id="atsTableBody">
@@ -397,11 +415,16 @@
   </main>
 
   <!-- MODAL: AJUSTES (CONFIGURACIÓN DE CARPETA DE CLIENTES) -->
-  <div id="settingsModal" class="modal-overlay">
+  <div id="settingsModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
     <div class="modal-content" style="max-width: 520px;">
       <div class="modal-header">
-        <h3 class="modal-title">Ajustes de Almacenamiento</h3>
-        <button id="btnCloseSettingsModal" class="modal-close-btn">x</button>
+        <h3 id="settingsModalTitle" class="modal-title">Ajustes de Almacenamiento</h3>
+        <button id="btnCloseSettingsModal" class="modal-close-btn" aria-label="Cerrar ajustes">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       
       <div class="modal-body">
@@ -424,11 +447,16 @@
   </div>
 
   <!-- MODAL: AGREGAR / EDITAR CLIENTE -->
-  <div id="clientModal" class="modal-overlay">
+  <div id="clientModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-content" style="max-width: 480px;">
       <div class="modal-header">
         <h3 id="modalTitle" class="modal-title">Nuevo Cliente</h3>
-        <button id="btnCloseClientModal" class="modal-close-btn">x</button>
+        <button id="btnCloseClientModal" class="modal-close-btn" aria-label="Cerrar formulario">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       
       <form id="clientForm" class="modal-body">
@@ -499,14 +527,23 @@
   </div>
 
   <!-- MODAL: DETECCIÓN DE CLIENTE DUPLICADO O CON NOMBRE SIMILAR -->
-  <div id="duplicateClientModal" class="modal-overlay">
+  <div id="duplicateClientModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="dupModalTitle">
     <div class="modal-content" style="max-width: 520px;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 18px;">⚠️</span>
-          <h3 class="modal-title">Coincidencia de Cliente Detectada</h3>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--status-warning, #f59e0b);">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <h3 id="dupModalTitle" class="modal-title">Coincidencia de Cliente Detectada</h3>
         </div>
-        <button id="btnCloseDupModal" class="modal-close-btn">x</button>
+        <button id="btnCloseDupModal" class="modal-close-btn" aria-label="Cerrar advertencia">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       
       <div class="modal-body">
@@ -562,11 +599,16 @@
   </div>
 
   <!-- MODAL: SOLICITAR CLAVE EN PRIMER INICIO -->
-  <div id="askPasswordModal" class="modal-overlay">
+  <div id="askPasswordModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="askPassModalTitle">
     <div class="modal-content" style="max-width: 400px;">
       <div class="modal-header">
-        <h3 class="modal-title">Clave SRI del Cliente</h3>
-        <button id="btnCloseAskPasswordModal" class="modal-close-btn">x</button>
+        <h3 id="askPassModalTitle" class="modal-title">Clave SRI del Cliente</h3>
+        <button id="btnCloseAskPasswordModal" class="modal-close-btn" aria-label="Cerrar solicitud de clave">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       <div class="modal-body">
         <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.4;">
@@ -591,11 +633,16 @@
   </div>
 
   <!-- MODAL: CONFIRMAR DESCARGA MASIVA DE XMLs -->
-  <div id="bulkDownloadModal" class="modal-overlay">
+  <div id="bulkDownloadModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="bulkModalTitle">
     <div class="modal-content" style="max-width: 420px;">
       <div class="modal-header">
-        <h3 class="modal-title">Descarga de Comprobantes XML</h3>
-        <button id="btnCloseBulkModal" class="modal-close-btn">x</button>
+        <h3 id="bulkModalTitle" class="modal-title">Descarga de Comprobantes XML</h3>
+        <button id="btnCloseBulkModal" class="modal-close-btn" aria-label="Cerrar confirmación de descarga">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       <div class="modal-body">
         <div id="bulkInspectInfo" class="inspect-info-box">
@@ -630,11 +677,16 @@
   </div>
 
   <!-- MODAL: RESULTADO GENERACIÓN ATS -->
-  <div id="atsSuccessModal" class="modal-overlay">
+  <div id="atsSuccessModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="atsSuccessModalTitle">
     <div class="modal-content" style="max-width: 460px;">
       <div class="modal-header">
-        <h3 class="modal-title">Anexo Transaccional Generado</h3>
-        <button id="btnCloseAtsModal" class="modal-close-btn">x</button>
+        <h3 id="atsSuccessModalTitle" class="modal-title">Anexo Transaccional Generado</h3>
+        <button id="btnCloseAtsModal" class="modal-close-btn" aria-label="Cerrar resultado ATS">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       <div class="modal-body">
         <div class="ats-success-badge-box">
@@ -657,11 +709,16 @@
   </div>
 
   <!-- MODAL: AJUSTE DE IVA POR DISCAPACIDAD -->
-  <div id="discapacidadModal" class="modal-overlay">
+  <div id="discapacidadModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="discapacidadModalTitle">
     <div class="modal-content" style="max-width: 470px;">
       <div class="modal-header">
-        <h3 class="modal-title">Ajuste de IVA por Discapacidad</h3>
-        <button id="btnCloseDiscapacidadModal" class="modal-close-btn">x</button>
+        <h3 id="discapacidadModalTitle" class="modal-title">Ajuste de IVA por Discapacidad</h3>
+        <button id="btnCloseDiscapacidadModal" class="modal-close-btn" aria-label="Cerrar ajuste por discapacidad">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       
       <div class="modal-body">
@@ -719,7 +776,12 @@
         <span class="progress-spinner" id="progressSpinner"></span>
         <h4 id="progressDrawerTitle">Descargando Comprobantes SRI</h4>
       </div>
-      <button id="btnCloseProgressDrawer" class="btn-close-banner" title="Cerrar panel">x</button>
+      <button id="btnCloseProgressDrawer" class="btn-close-banner" title="Cerrar panel" aria-label="Cerrar panel de progreso">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
 
     <!-- Barra de Progreso con Porcentaje Dinámico -->
@@ -751,14 +813,18 @@
     <!-- Acciones del Drawer -->
     <div class="progress-footer">
       <button id="btnCancelDownloadProcess" class="btn btn-secondary btn-sm">Detener Descarga</button>
-      <button id="btnGoToAtsAfterDownload" class="btn btn-primary btn-sm" style="display: none;">Ver en ATS →</button>
+      <button id="btnGoToAtsAfterDownload" class="btn btn-primary btn-sm" style="display: none;">Ver en ATS</button>
     </div>
   </div>
 
   <!-- BANNER DISCRETO DE ACTUALIZACIÓN AUTOMÁTICA -->
   <div id="appUpdateBanner" class="app-update-banner" style="display: none;">
     <div class="update-banner-content">
-      <span class="update-banner-icon">✨</span>
+      <svg class="update-banner-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
       <span class="update-banner-text" id="updateBannerText">Nueva versión disponible</span>
       <button type="button" class="btn-update-restart" id="btnUpdateRestart" style="display: none;">Reiniciar y actualizar</button>
       <button type="button" class="btn-update-close" id="btnUpdateClose">&times;</button>

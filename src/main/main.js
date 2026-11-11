@@ -149,6 +149,10 @@ function setupIpcHandlers() {
     return getAutomationModule().getApplyDiscapacidadIvaScript(config);
   });
 
+  ipcMain.handle('sri:get-activate-all-reclamo-rows-script', async () => {
+    return getAutomationModule().getActivateAllReclamoRowsScript();
+  });
+
   ipcMain.handle('sri:get-process-reclamo-row-script', async (event, rowIndex) => {
     return getAutomationModule().getProcessReclamoRowScript(rowIndex);
   });

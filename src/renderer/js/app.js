@@ -339,6 +339,42 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnGoToAtsAfterDownload = document.getElementById('btnGoToAtsAfterDownload');
 
   let currentWebview = null;
+  let drawerDismissTimer = null;
+
+  function openProgressDrawer(title, initialStatus) {
+    if (drawerDismissTimer) {
+      clearTimeout(drawerDismissTimer);
+      drawerDismissTimer = null;
+    }
+    downloadProgressDrawer.classList.remove('fade-out');
+    downloadProgressDrawer.classList.add('active');
+    if (title && progressDrawerTitle) progressDrawerTitle.textContent = title;
+    if (initialStatus && progressCurrentFile) progressCurrentFile.textContent = initialStatus;
+  }
+
+  function dismissProgressDrawer(delayMs = 500) {
+    if (drawerDismissTimer) {
+      clearTimeout(drawerDismissTimer);
+      drawerDismissTimer = null;
+    }
+    drawerDismissTimer = setTimeout(() => {
+      downloadProgressDrawer.classList.add('fade-out');
+      setTimeout(() => {
+        downloadProgressDrawer.classList.remove('active', 'fade-out');
+      }, 250);
+    }, delayMs);
+  }
+
+  function closeProgressDrawerImmediate() {
+    if (drawerDismissTimer) {
+      clearTimeout(drawerDismissTimer);
+      drawerDismissTimer = null;
+    }
+    downloadProgressDrawer.classList.add('fade-out');
+    setTimeout(() => {
+      downloadProgressDrawer.classList.remove('active', 'fade-out');
+    }, 200);
+  }
 
   // -------------------------------------------------------------
   // 1. NAVEGACIÓN PRINCIPAL ENTRE SECCIONES (Clientes, SRI, ATS)
@@ -521,10 +557,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // Manejador global accesible para tecla Escape (Cierre de modales, popovers y menús)
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && userDropdownMenu && userDropdownMenu.classList.contains('active')) {
-      closeUserDropdown();
+    if (e.key === 'Escape') {
+      // 1. Modales activos (cierra el modal superior)
+      const activeModals = document.querySelectorAll('.modal-overlay.active');
+      if (activeModals.length > 0) {
+        const topModal = activeModals[activeModals.length - 1];
+        topModal.classList.remove('active');
+        return;
+      }
+      // 2. Popover de notificaciones
+      if (notificationPopover && notificationPopover.classList.contains('active')) {
+        notificationPopover.classList.remove('active');
+        return;
+      }
+      // 3. Menú desplegable de usuarios
+      if (userDropdownMenu && userDropdownMenu.classList.contains('active')) {
+        closeUserDropdown();
+        return;
+      }
     }
+  });
+
+  // Cierre accesible de modales al hacer clic en el backdrop exterior
+  document.querySelectorAll('.modal-overlay').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('active');
+      }
+    });
   });
 
   async function switchActiveClient(client) {
@@ -601,6 +663,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  function getClientInitials(name) {
+    if (!name) return 'CL';
+    const clean = name.trim();
+    const parts = clean.split(/\s+/).filter(p => p.length > 0 && !['DE', 'DEL', 'LA', 'LAS', 'EL', 'LOS', 'Y', 'E'].includes(p.toUpperCase()));
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    if (parts.length === 1 && parts[0].length >= 2) {
+      return parts[0].substring(0, 2).toUpperCase();
+    }
+    return (clean.substring(0, 2) || 'CL').toUpperCase();
+  }
+
   function renderClients(filterText = '') {
     const query = filterText.toLowerCase().trim();
     const filtered = state.clients.filter(c => 
@@ -620,33 +695,59 @@ document.addEventListener('DOMContentLoaded', async () => {
     clientsGrid.innerHTML = '';
 
     if (filtered.length === 0) {
-      clientsGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 30px;">No se encontraron clientes para "${filterText}".</div>`;
+      clientsGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--muted-foreground); padding: 40px 20px; font-size: 13.5px;">No se encontraron clientes para "<strong>${escapeHtml(filterText)}</strong>".</div>`;
       return;
     }
 
     filtered.forEach(client => {
       const isClientActive = state.activeClient && (state.activeClient.id === client.id || state.activeClient.ruc === client.ruc);
+      const initials = getClientInitials(client.razonSocial);
       const card = document.createElement('div');
       card.className = `client-card ${isClientActive ? 'client-card-active' : ''}`;
 
       card.innerHTML = `
         <div class="card-top-row">
-          <div class="card-company-name">${escapeHtml(client.razonSocial)}</div>
+          <div class="card-identity-group">
+            <div class="client-avatar-badge" aria-hidden="true">${escapeHtml(initials)}</div>
+            <div class="card-company-name" title="${escapeHtml(client.razonSocial)}">${escapeHtml(client.razonSocial)}</div>
+          </div>
           <div class="card-management-actions">
-            <button class="btn-icon-tiny btn-edit-client" title="Editar cliente y contraseña">Editar</button>
-            <button class="btn-icon-tiny delete btn-delete-client" title="Eliminar cliente">Eliminar</button>
+            <button class="btn-icon-tiny btn-edit-client" title="Editar cliente y contraseña" aria-label="Editar ${escapeHtml(client.razonSocial)}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              <span>Editar</span>
+            </button>
+            <button class="btn-icon-tiny delete btn-delete-client" title="Eliminar cliente" aria-label="Eliminar ${escapeHtml(client.razonSocial)}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              <span>Eliminar</span>
+            </button>
           </div>
         </div>
 
         <div class="card-middle-row">
-          <span class="card-ruc-badge">${client.ruc}</span>
+          <div class="card-ruc-wrapper">
+            <span class="card-ruc-label">RUC</span>
+            <span class="card-ruc-badge">${escapeHtml(client.ruc)}</span>
+          </div>
           <span class="card-status-badge ${client.hasPassword ? 'status-saved' : 'status-pending'}">
-            ${client.hasPassword ? 'Clave guardada' : 'Sin clave'}
+            <span class="status-dot" aria-hidden="true"></span>
+            <span>${client.hasPassword ? 'Clave guardada' : 'Sin clave'}</span>
           </span>
         </div>
 
         <button class="btn-open-session">
-          Iniciar Sesión SRI
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            ${isClientActive 
+              ? '<polyline points="20 6 9 17 4 12"></polyline>' 
+              : '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line>'
+            }
+          </svg>
+          <span>${isClientActive ? 'Sesión SRI Activa' : 'Iniciar Sesión SRI'}</span>
         </button>
       `;
 
@@ -1581,19 +1682,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (state.cancelBulkDownload) {
         progressDrawerTitle.textContent = 'Descarga Detenida';
         if (progressSpinner) progressSpinner.style.display = 'none';
-        progressCurrentFile.textContent = `Descarga detenida por el usuario. Se descargaron ${totalDownloaded} comprobantes.`;
+        progressCurrentFile.textContent = `Detenido: ${totalDownloaded} comprobantes.`;
         if (btnCancelDownloadProcess) btnCancelDownloadProcess.style.display = 'none';
         if (btnGoToAtsAfterDownload) btnGoToAtsAfterDownload.style.display = 'inline-flex';
-        showBanner(`Descarga detenida: ${totalDownloaded} comprobantes guardados.`, 'warning', 4000);
+        showBanner(`Descarga detenida: ${totalDownloaded} comprobantes.`, 'warning', 800);
+        dismissProgressDrawer(600);
       } else {
         progressBarFill.style.width = '100%';
         progressPercentBadge.textContent = '100%';
-        progressDrawerTitle.textContent = '✓ Descarga Finalizada';
+        progressDrawerTitle.textContent = 'Descarga Finalizada';
         if (progressSpinner) progressSpinner.style.display = 'none';
-        progressCurrentFile.textContent = `Descarga completada: ${totalDownloaded} comprobantes organizados por Año y Mes.`;
+        progressCurrentFile.textContent = `${totalDownloaded} comprobantes organizados.`;
         if (btnCancelDownloadProcess) btnCancelDownloadProcess.style.display = 'none';
         if (btnGoToAtsAfterDownload) btnGoToAtsAfterDownload.style.display = 'inline-flex';
-        showBanner(`Descarga completada: ${totalDownloaded} comprobantes organizados.`, 'success', 4000);
+        showBanner(`Descarga completada: ${totalDownloaded} comprobantes.`, 'success', 800);
+        dismissProgressDrawer(500);
       }
 
       // Sincronizar automáticamente el módulo ATS con las nuevas descargas
@@ -1608,7 +1711,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.error('Error durante la descarga masiva:', err);
       if (progressSpinner) progressSpinner.style.display = 'none';
       progressCurrentFile.textContent = 'Error: ' + err.message;
-      showBanner('Error en descarga: ' + err.message, 'warning', 7000);
+      showBanner('Error en descarga: ' + err.message, 'warning', 1000);
+      dismissProgressDrawer(1000);
     } finally {
       state.isBulkDownloading = false;
     }
@@ -1630,12 +1734,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (btnGoToAtsAfterDownload) {
     btnGoToAtsAfterDownload.addEventListener('click', () => {
       switchMainSection('ats');
-      downloadProgressDrawer.classList.remove('active');
+      closeProgressDrawerImmediate();
     });
   }
 
   btnCloseProgressDrawer.addEventListener('click', () => {
-    downloadProgressDrawer.classList.remove('active');
+    closeProgressDrawerImmediate();
   });
 
   // -------------------------------------------------------------
@@ -1656,11 +1760,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       const totalRows = info ? (info.rowCount || info.rowsCount || info.totalRows || 0) : 0;
 
       if (!info || !info.hasTable || totalRows === 0) {
-        downloadProgressDrawer.classList.add('active');
-        progressDrawerTitle.textContent = 'Reclamo Automático SRI';
+        openProgressDrawer('Reclamo Automático', 'No se detectó tabla de comprobantes.');
         if (progressSpinner) progressSpinner.style.display = 'none';
         if (btnCancelDownloadProcess) btnCancelDownloadProcess.style.display = 'none';
-        progressCurrentFile.textContent = 'No se detectó la tabla de comprobantes en la pantalla actual del SRI.';
+        dismissProgressDrawer(800);
         return;
       }
 
@@ -1671,7 +1774,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       btnDiscapacidadIva.style.cursor = 'wait';
 
       // 2. Activar el Drawer Institucional de Progreso
-      downloadProgressDrawer.classList.add('active');
+      openProgressDrawer('Reclamo Automático', `Fase 1/2: Activando ${totalRows} comprobantes...`);
       progressBarFill.style.width = '0%';
       progressPercentBadge.textContent = '0%';
       progressCompletedCount.textContent = '0';
@@ -1680,7 +1783,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (progressMetric2Label) progressMetric2Label.textContent = 'Completados:';
       progressCurrentPage.textContent = '0';
       progressTotalPages.textContent = totalRows;
-      progressDrawerTitle.textContent = 'Reclamo Automático SRI';
       if (progressCurrentBoxLabel) progressCurrentBoxLabel.textContent = 'Comprobante actual:';
       if (progressSpinner) progressSpinner.style.display = 'inline-block';
       if (btnCancelDownloadProcess) {
@@ -1688,15 +1790,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         btnCancelDownloadProcess.style.display = 'inline-flex';
       }
       if (btnGoToAtsAfterDownload) btnGoToAtsAfterDownload.style.display = 'none';
-      progressCurrentFile.textContent = `Iniciando reclamo automático para ${totalRows} comprobantes...`;
+      // FASE 1: Activar y seleccionar primero todas las filas de la tabla de comprobantes
+      progressCurrentFile.textContent = `Fase 1/2: Activando casillas de ${totalRows} comprobantes...`;
+      progressBarFill.style.width = '10%';
+      progressPercentBadge.textContent = '10%';
 
+      try {
+        const activateScript = await window.tribuApi.getActivateAllReclamoRowsScript();
+        await currentWebview.executeJavaScript(activateScript);
+      } catch (actErr) {
+        console.warn('Error en Fase 1 (activar comprobantes):', actErr);
+      }
+
+      // Pausa de estabilización para permitir a PrimeFaces / JSF habilitar los desplegables de todas las filas
+      await new Promise(r => setTimeout(r, 450));
+
+      if (state.cancelReclamo) {
+        if (progressSpinner) progressSpinner.style.display = 'none';
+        if (btnCancelDownloadProcess) btnCancelDownloadProcess.style.display = 'none';
+        progressDrawerTitle.textContent = 'Reclamo Detenido';
+        progressCurrentFile.textContent = 'Proceso detenido tras activar casillas.';
+        dismissProgressDrawer(500);
+        return;
+      }
+
+      // FASE 2: Colocar uno por uno el monto del IVA solicitado y el tipo de gasto
+      progressCurrentFile.textContent = `Fase 2/2: Llenando monto y gasto...`;
       let processedCount = 0;
 
-      // 3. Procesar fila por fila marcando casilla, tipo de gasto e IVA
       for (let i = 0; i < totalRows; i++) {
         if (state.cancelReclamo) break;
 
-        progressCurrentFile.textContent = `[${i + 1}/${totalRows}] Analizando y llenando comprobante...`;
+        progressCurrentFile.textContent = `[${i + 1}/${totalRows}] Colocando monto y tipo de gasto...`;
 
         try {
           const rowScript = await window.tribuApi.getProcessReclamoRowScript(i);
@@ -1715,14 +1840,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             progressPercentBadge.textContent = `${pct}%`;
             progressCompletedCount.textContent = (i + 1);
             progressCurrentPage.textContent = processedCount;
-            progressCurrentFile.textContent = `[${i + 1}/${totalRows}] ${res.razonSocial || 'Comprobante'} ➔ ${res.tipoGasto} | IVA: $${res.montoIva}`;
+            const shortName = (res.razonSocial || 'Comprobante').substring(0, 24);
+            progressCurrentFile.textContent = `[${i + 1}/${totalRows}] ${shortName} - ${res.tipoGasto} | $${res.montoIva}`;
           }
         } catch (rowErr) {
           console.warn(`Error en fila ${i + 1}:`, rowErr);
         }
 
         // Breve pausa para dar fluidez visual y permitir eventos JSF/PrimeFaces
-        await new Promise(r => setTimeout(r, 70));
+        await new Promise(r => setTimeout(r, 100));
       }
 
       // 4. Finalización / Cancelación (Únicamente en el Drawer)
@@ -1730,17 +1856,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (btnCancelDownloadProcess) btnCancelDownloadProcess.style.display = 'none';
 
       if (state.cancelReclamo) {
-        progressDrawerTitle.textContent = 'Reclamo Automático Detenido';
-        progressCurrentFile.textContent = `Proceso detenido: ${processedCount} de ${totalRows} comprobantes llenados.`;
+        progressDrawerTitle.textContent = 'Reclamo Detenido';
+        progressCurrentFile.textContent = `${processedCount} de ${totalRows} comprobantes completados.`;
+        dismissProgressDrawer(500);
       } else {
         progressBarFill.style.width = '100%';
         progressPercentBadge.textContent = '100%';
-        progressDrawerTitle.textContent = 'Reclamo Automático Finalizado';
-        progressCurrentFile.innerHTML = `<strong>Listo: ${processedCount} de ${totalRows} comprobantes completados.</strong><br><span style="color: var(--status-warning, #f59e0b); font-size: 11px; display: inline-block; margin-top: 4px;">⚠️ REVISIÓN RECOMENDADA: Por favor verifica lo llenado antes de procesar las facturas.</span>`;
+        progressDrawerTitle.textContent = 'Reclamo Finalizado';
+        progressCurrentFile.textContent = `${processedCount} de ${totalRows} comprobantes completados.`;
+        // Durar medio segundo (500ms) e irse desvaneciendo suavemente
+        dismissProgressDrawer(500);
       }
     } catch (err) {
       if (progressSpinner) progressSpinner.style.display = 'none';
       progressCurrentFile.textContent = 'Error: ' + err.message;
+      dismissProgressDrawer(1000);
     } finally {
       state.isProcessingReclamo = false;
       btnDiscapacidadIva.disabled = false;
@@ -1832,14 +1962,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     automationBannerText.textContent = message;
+    automationBanner.classList.remove('fade-out');
     automationBanner.className = `automation-banner show ${type}`;
 
     if (type !== 'warning' && btnCorregirClaveBanner) {
       btnCorregirClaveBanner.style.display = 'none';
     }
 
-    // Desaparecer automáticamente (1.2 segundos por defecto para avisos y éxitos)
-    const duration = autoHideMs > 0 ? autoHideMs : (type === 'success' || type === 'info' ? 1200 : 0);
+    // Desaparecer automáticamente (muy poco tiempo: ~600ms por defecto)
+    const duration = autoHideMs > 0 ? autoHideMs : 600;
 
     if (duration > 0) {
       bannerTimer = setTimeout(() => {
@@ -1853,7 +1984,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       clearTimeout(bannerTimer);
       bannerTimer = null;
     }
-    automationBanner.classList.remove('show');
+    automationBanner.classList.add('fade-out');
+    setTimeout(() => {
+      automationBanner.classList.remove('show', 'fade-out');
+    }, 200);
   }
 
   if (btnCloseBanner) {
