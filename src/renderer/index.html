@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TRIBU - Asistente Contable SRI Ecuador</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+  <!-- UN SOLO ENCABEZADO PRINCIPAL (FIJO, CENTRADO Y PASIVO) -->
+  <header class="app-header">
+    <div class="header-left-group">
+      <!-- Logo TRIBU (Tipografía especial para logo, sin recuadro) con Slicer de Modo Oscuro -->
+      <div class="brand-section" id="brandSection" title="TRIBU - Pasa el ratón para alternar tema">
+        <span class="brand-title">TRIBU</span>
+        <label class="theme-switch-wrapper" id="themeSwitchWrapper" title="Alternar Modo Claro / Oscuro">
+          <input type="checkbox" id="themeToggleCheckbox" class="theme-checkbox" aria-label="Alternar Modo Claro / Oscuro">
+          <span class="theme-slider">
+            <span class="theme-slider-thumb"></span>
+          </span>
+        </label>
+      </div>
+
+      <!-- Selector Rápido de Usuarios / Contribuyente Activo -->
+      <div class="header-user-wrapper" id="headerUserWrapper">
+        <div class="header-user-badge" id="headerUserBadge" role="button" tabindex="0" title="Click para cambiar rápidamente de usuario">
+          <span class="user-status-dot" id="userStatusDot"></span>
+          <div class="user-details">
+            <span class="user-name" id="topbarClientName">Sin cliente seleccionado</span>
+            <span class="user-ruc" id="topbarClientRuc">Selecciona un cliente para comenzar</span>
+          </div>
+          <span class="user-dropdown-caret" id="userDropdownCaret">&#9662;</span>
+        </div>
+
+        <!-- Menú Desplegable Flotante de Usuarios -->
+        <div class="user-dropdown-menu" id="userDropdownMenu" aria-label="Lista de usuarios">
+          <div class="user-dropdown-header">
+            <span class="user-dropdown-title">Cambiar de Usuario</span>
+            <span class="user-dropdown-count" id="dropdownUserCount">0 usuarios</span>
+          </div>
+          <div class="user-dropdown-list" id="userDropdownList">
+            <!-- Se puebla dinámicamente con los usuarios registrados -->
+          </div>
+          <div class="user-dropdown-footer">
+            <button type="button" class="btn-dropdown-add-user" id="btnDropdownAddUser">
+              <span class="btn-add-icon">+</span> Agregar nuevo usuario
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Secciones de Navegación: Clientes, SRI, ATS (Centradas en el encabezado) -->
+    <nav class="header-nav-tabs">
+      <button id="navSectionClientes" class="nav-tab-btn active" data-section="clientes">Clientes</button>
+      <button id="navSectionSri" class="nav-tab-btn" data-section="sri">SRI</button>
+      <button id="navSectionAts" class="nav-tab-btn" data-section="ats">ATS</button>
+    </nav>
+
+    <!-- Espacio Pasivo Derecho (Garantiza centrado perfecto y estabilidad del encabezado) -->
+    <div class="header-right-group"></div>
+  </header>
+
+  <!-- CONTENEDOR PRINCIPAL DE VISTAS -->
+  <main class="views-wrapper">
+
+    <!-- SECCIÓN 1: CLIENTES -->
+    <section id="viewClientes" class="view active">
+      <div class="dashboard-content">
+        
+        <!-- Barra de herramientas: Buscar, Total, Nuevo Cliente, Ajustes -->
+        <div class="dashboard-toolbar">
+          <div class="search-box">
+            <span class="search-label">Buscar:</span>
+            <input type="text" id="searchInput" placeholder="RUC o Razón Social...">
+          </div>
+
+          <div class="dashboard-toolbar-actions">
+            <div class="client-stats-pill">
+              <span id="totalClientsCount">0</span> clientes
+            </div>
+
+            <!-- Botón exclusivo para agregar nuevo cliente -->
+            <button id="btnAddNewClient" class="btn btn-primary">
+              + Nuevo Cliente
+            </button>
+
+            <!-- Icono de Ajustes para modificar la carpeta de clientes -->
+            <button id="btnOpenSettings" class="btn-settings" title="Ajustes y Configuración de Carpetas">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+              <span>Ajustes</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Cuadrícula de Clientes -->
+        <div id="clientsGrid" class="clients-grid"></div>
+
+        <!-- Estado Vacío -->
+        <div id="emptyState" class="empty-state" style="display: none;">
+          <div class="empty-state-badge">[ Clientes ]</div>
+          <h3>Aún no has registrado ningún cliente</h3>
+          <p>Comienza agregando tu primer cliente con su RUC y Razón Social. Su carpeta de descargas se creará automáticamente.</p>
+          <button id="btnEmptyAddClient" class="btn btn-primary">+ Registrar Primer Cliente</button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECCIÓN 2: SRI (NAVEGADOR Y AUTOMATIZACIÓN) -->
+    <section id="viewSri" class="view">
+      <!-- Barra de Herramientas propia del SRI (Debajo del encabezado) -->
+      <div class="sri-toolbar">
+        <div class="sri-toolbar-left">
+          <span class="sri-portal-badge">SRI en Línea</span>
+          <span class="sri-portal-hint">Portal Oficial del Servicio de Rentas Internas</span>
+        </div>
+
+        <div class="sri-toolbar-actions">
+          <button id="btnTriggerBulkDownload" class="btn btn-download-xml" style="display: none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Descargar XMLs</span>
+          </button>
+          <button id="btnDiscapacidadIva" class="btn btn-discapacidad" style="display: none;" title="Rellenar automáticamente la tabla de comprobantes de reclamo">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 11 12 14 22 4"></polyline>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+            <span>Reclamo Automático</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Banner de Estado de Automatización / Alertas de Login -->
+      <div id="automationBanner" class="automation-banner">
+        <span id="automationBannerText">Listo para operar en el portal del SRI.</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button id="btnCorregirClaveBanner" class="btn btn-secondary" style="display: none; padding: 3px 10px; font-size: 11px;">Corregir Clave</button>
+          <button id="btnCloseBanner" class="btn-close-banner">x</button>
+        </div>
+      </div>
+
+      <!-- Contenedor del Navegador Webview -->
+      <div class="webview-container" id="webviewContainer">
+        <!-- El elemento <webview> se crea dinámicamente con la partición del cliente -->
+      </div>
+    </section>
+
+    <!-- SECCIÓN 3: ATS (VISOR XML Y GENERADOR ATS) -->
+    <section id="viewAts" class="view">
+      <div class="ats-view-container" id="clientAtsContainer">
+        
+        <!-- Barra de Filtros y Acciones ATS -->
+        <div class="ats-toolbar">
+          <div class="ats-filters-group">
+            <div class="ats-filter-item">
+              <label for="atsFilterCategory">Tipo:</label>
+              <select id="atsFilterCategory" class="ats-select">
+                <option value="Compras" selected>Compras (Recibidos)</option>
+                <option value="Ventas">Ventas (Emitidos)</option>
+              </select>
+            </div>
+
+            <div class="ats-filter-item">
+              <label for="atsFilterYear">Año:</label>
+              <select id="atsFilterYear" class="ats-select"></select>
+            </div>
+
+            <div class="ats-filter-item">
+              <label for="atsFilterMonth">Mes:</label>
+              <select id="atsFilterMonth" class="ats-select"></select>
+            </div>
+
+            <button id="btnLoadPeriodXmls" class="btn btn-secondary">Cargar Comprobantes</button>
+            <button id="btnOpenCurrentPeriodFolder" class="btn btn-secondary" title="Abrir carpeta del periodo en el explorador de archivos">Abrir Carpeta</button>
+          </div>
+
+          <div class="ats-actions-group">
+            <button id="btnExportCsv" class="btn btn-secondary">Exportar a Excel (CSV)</button>
+            <button id="btnGenerateAtsXml" class="btn btn-success font-bold">Generar Anexo ATS (XML)</button>
+          </div>
+        </div>
+
+        <!-- Indicadores Resumen (KPIs) -->
+        <div class="ats-kpi-bar">
+          <div class="kpi-card">
+            <span class="kpi-label">Comprobantes</span>
+            <span id="kpiCount" class="kpi-value">0</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Subtotal Tarifa 0%</span>
+            <span id="kpiBase0" class="kpi-value">$0.00</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Subtotal Tarifa Gravada</span>
+            <span id="kpiBaseGrav" class="kpi-value">$0.00</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Monto IVA</span>
+            <span id="kpiMontoIva" class="kpi-value highlight-iva">$0.00</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Total Facturado</span>
+            <span id="kpiTotal" class="kpi-value highlight-total">$0.00</span>
+          </div>
+        </div>
+
+        <!-- Tabla de Comprobantes XML -->
+        <div class="ats-table-container">
+          <table class="ats-table" id="atsTable">
+            <thead>
+              <tr>
+                <th style="width: 40px;">#</th>
+                <th style="width: 90px;">Fecha</th>
+                <th style="width: 95px;">Tipo</th>
+                <th style="width: 140px;">Serie / Secuencial</th>
+                <th style="width: 120px;">RUC Emisor</th>
+                <th>Razón Social Emisor</th>
+                <th style="width: 220px;">Sustento Tributario (ATS)</th>
+                <th style="width: 95px; text-align: right;">Base 0%</th>
+                <th style="width: 95px; text-align: right;">Base Gravada</th>
+                <th style="width: 85px; text-align: right;">IVA</th>
+                <th style="width: 95px; text-align: right;">Total</th>
+                <th style="width: 70px;">Pago</th>
+                <th style="width: 90px; text-align: center;">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="atsTableBody">
+              <tr>
+                <td colspan="13" class="table-empty-cell">
+                  Selecciona un periodo y presiona "Cargar Comprobantes" para visualizar los comprobantes XML descargados.
+                </td>
+              </tr>
+            </tbody>
+            <tfoot id="atsTableFoot" style="display: none;">
+              <tr class="table-totals-row">
+                <td colspan="7" style="text-align: right; font-weight: 700;">TOTALES DEL PERIODO:</td>
+                <td id="footBase0" style="text-align: right; font-weight: 700;">$0.00</td>
+                <td id="footBaseGrav" style="text-align: right; font-weight: 700;">$0.00</td>
+                <td id="footMontoIva" style="text-align: right; font-weight: 700; color: #047857;">$0.00</td>
+                <td id="footTotal" style="text-align: right; font-weight: 700; color: #1a56db;">$0.00</td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: AJUSTES (CONFIGURACIÓN DE CARPETA DE CLIENTES) -->
+  <div id="settingsModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Ajustes de Almacenamiento</h3>
+        <button id="btnCloseSettingsModal" class="modal-close-btn">x</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Carpeta Base de Clientes:</label>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+            Ubicación central donde TRIBU organiza automáticamente las carpetas y comprobantes XML descargados de cada cliente.
+          </p>
+          <div class="settings-folder-box">
+            <span id="settingsBaseFolderPath" class="settings-folder-path">C:\...\SRI_Clientes</span>
+            <button id="btnChangeBaseFolderModal" class="btn btn-secondary">Examinar / Cambiar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btnDoneSettingsModal" class="btn btn-primary">Listo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AGREGAR / EDITAR CLIENTE -->
+  <div id="clientModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 id="modalTitle" class="modal-title">Nuevo Cliente</h3>
+        <button id="btnCloseClientModal" class="modal-close-btn">x</button>
+      </div>
+      
+      <form id="clientForm" class="modal-body">
+        <input type="hidden" id="clientId">
+        
+        <div class="form-group">
+          <label for="inputRuc">RUC del Cliente *</label>
+          <input type="text" id="inputRuc" placeholder="13 dígitos (ej: 1790012345001)" maxlength="13">
+        </div>
+
+        <div class="form-group">
+          <label>Tipo de Contribuyente *</label>
+          <div class="radio-toggle-group">
+            <label class="radio-option">
+              <input type="radio" name="clientType" id="typeNatural" value="natural" checked>
+              <span>Persona Natural</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="clientType" id="typeJuridica" value="juridica">
+              <span>Sociedad / Empresa</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Campos para Persona Natural: Obliga Apellidos y Nombres -->
+        <div id="fieldsNatural" class="fields-subgroup">
+          <div class="form-group">
+            <label for="inputApellidos">Apellidos * <small class="label-hint">(Primer y segundo apellido)</small></label>
+            <input type="text" id="inputApellidos" placeholder="Ej: PÉREZ LÓPEZ" autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <label for="inputNombres">Nombres * <small class="label-hint">(Nombres completos)</small></label>
+            <input type="text" id="inputNombres" placeholder="Ej: JUAN CARLOS" autocomplete="off">
+          </div>
+        </div>
+
+        <!-- Campos para Sociedad / Empresa -->
+        <div id="fieldsJuridica" class="fields-subgroup" style="display: none;">
+          <div class="form-group">
+            <label for="inputRazonSocial">Razón Social de la Empresa *</label>
+            <input type="text" id="inputRazonSocial" placeholder="Ej: IMPORTADORA ANDINA S.A." autocomplete="off">
+          </div>
+        </div>
+
+        <!-- Previsualización de Nombre Estandarizado y Carpeta -->
+        <div class="folder-preview-box" id="folderPreviewBox">
+          <div class="folder-preview-label">Formato estandarizado de la carpeta:</div>
+          <div class="folder-preview-value" id="previewFolderName">APELLIDOS NOMBRES</div>
+          <div class="folder-preview-path" id="previewFolderPath">Ruta: C:\...\SRI_Clientes\...</div>
+        </div>
+
+        <div class="form-group">
+          <label for="inputPassword">Contraseña SRI</label>
+          <div class="input-with-button">
+            <input type="password" id="inputPassword" placeholder="Contraseña del SRI">
+            <button type="button" id="btnTogglePassword" class="btn btn-secondary" style="padding: 0 10px;" title="Ver/Ocultar contraseña">Ver</button>
+          </div>
+          <span class="form-help">Los datos de inicio de sesión se guardan de forma cifrada en la carpeta del cliente.</span>
+        </div>
+      </form>
+
+      <div class="modal-footer">
+        <button id="btnCancelClientModal" class="btn btn-secondary">Cancelar</button>
+        <button id="btnSaveClient" class="btn btn-primary">Guardar Cliente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DETECCIÓN DE CLIENTE DUPLICADO O CON NOMBRE SIMILAR -->
+  <div id="duplicateClientModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px;">⚠️</span>
+          <h3 class="modal-title">Coincidencia de Cliente Detectada</h3>
+        </div>
+        <button id="btnCloseDupModal" class="modal-close-btn">x</button>
+      </div>
+      
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
+          Se detectó que ya existe un cliente registrado con un <strong>nombre idéntico o muy parecido</strong> en el sistema:
+        </p>
+
+        <!-- Comparación Visual de Registros -->
+        <div class="duplicate-comparison-container">
+          <!-- Tarjeta Cliente Existente -->
+          <div class="duplicate-card existing">
+            <div class="duplicate-card-header">
+              <span class="badge-tag tag-existing">CLIENTE REGISTRADO</span>
+              <span id="dupMatchReason" class="badge-tag tag-reason">Nombre Similar</span>
+            </div>
+            <div class="duplicate-name" id="dupExistingName">PÉREZ LÓPEZ JUAN CARLOS</div>
+            <div class="duplicate-meta">
+              <span><strong>RUC:</strong> <code id="dupExistingRuc">1105383663001</code></span>
+              <span class="dup-folder-hint" id="dupExistingFolder">Carpeta: SRI_Clientes\...</span>
+            </div>
+          </div>
+
+          <!-- Tarjeta Datos Nuevos Ingresados -->
+          <div class="duplicate-card entered">
+            <div class="duplicate-card-header">
+              <span class="badge-tag tag-entered">NUEVOS DATOS INGRESADOS</span>
+            </div>
+            <div class="duplicate-name" id="dupEnteredName">PÉREZ LÓPEZ JUAN CARLOS</div>
+            <div class="duplicate-meta">
+              <span><strong>RUC:</strong> <code id="dupEnteredRuc">1790012345001</code></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="duplicate-question-box">
+          <div class="question-title">¿Se trata del mismo cliente o de un cliente nuevo?</div>
+          <p class="question-subtitle">
+            Elige la acción que deseas realizar:
+          </p>
+        </div>
+      </div>
+
+      <div class="modal-footer duplicate-modal-footer">
+        <button id="btnDupCancel" class="btn btn-secondary">Volver</button>
+        <button id="btnDupIsSameClient" class="btn btn-warning" title="Actualiza el cliente existente con el nombre correcto y renombra su carpeta">
+          Es el mismo cliente<br><small style="font-size: 10px; color: #ffffff;">(Modificar / Corregir nombre)</small>
+        </button>
+        <button id="btnDupIsNewClient" class="btn btn-primary" title="Crea un cliente nuevo con un elemento diferenciador automático">
+          Es un cliente nuevo<br><small style="font-size: 10px; color: #ffffff;">(Añadir diferenciador)</small>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SOLICITAR CLAVE EN PRIMER INICIO -->
+  <div id="askPasswordModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Clave SRI del Cliente</h3>
+        <button id="btnCloseAskPasswordModal" class="modal-close-btn">x</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.4;">
+          Ingresa la contraseña del SRI para <strong id="askPassClientName" style="color: var(--btn-primary);"></strong>:
+        </p>
+        <div class="form-group" style="margin-top: 8px;">
+          <div class="input-with-button">
+            <input type="password" id="inputAskPassword" placeholder="Contraseña SRI">
+            <button type="button" id="btnToggleAskPassword" class="btn btn-secondary" style="padding: 0 10px;">Ver</button>
+          </div>
+        </div>
+        <div class="checkbox-group" style="margin-top: 6px;">
+          <input type="checkbox" id="checkRememberPassword" checked>
+          <label for="checkRememberPassword">Guardar y recordar esta clave</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnSkipPassword" class="btn btn-secondary">Entrar sin clave</button>
+        <button id="btnSubmitPassword" class="btn btn-primary">Ingresar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRMAR DESCARGA MASIVA DE XMLs -->
+  <div id="bulkDownloadModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Descarga de Comprobantes XML</h3>
+        <button id="btnCloseBulkModal" class="modal-close-btn">x</button>
+      </div>
+      <div class="modal-body">
+        <div id="bulkInspectInfo" class="inspect-info-box">
+          <p><strong>Tipo:</strong> <span id="bulkDetectedCategory" style="color: var(--btn-primary); font-weight: 700;">Ventas</span></p>
+          <p><strong>Comprobantes XML visibles:</strong> <span id="bulkDetectedRows" style="color: var(--btn-success); font-weight: 700;">0</span></p>
+          <p><strong>Páginas detectadas:</strong> <span id="bulkDetectedPages" style="font-weight: 700;">1</span></p>
+        </div>
+
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
+          Los archivos XML se guardarán automáticamente en la carpeta de su <strong>Año</strong> y <strong>Mes</strong> correspondiente con sus nombres descriptivos.
+        </p>
+
+        <div class="form-group" style="margin-top: 10px;">
+          <label>Alcance de la descarga:</label>
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px; font-size: 13px;">
+            <label class="checkbox-group">
+              <input type="radio" name="downloadScope" value="all" checked>
+              <span>Todas las páginas (Recorrer automáticamente)</span>
+            </label>
+            <label class="checkbox-group">
+              <input type="radio" name="downloadScope" value="single">
+              <span>Solo la página actual</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCancelBulkModal" class="btn btn-secondary">Cancelar</button>
+        <button id="btnConfirmBulkDownload" class="btn btn-success">Iniciar Descarga de XMLs</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RESULTADO GENERACIÓN ATS -->
+  <div id="atsSuccessModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 460px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Anexo Transaccional Generado</h3>
+        <button id="btnCloseAtsModal" class="modal-close-btn">x</button>
+      </div>
+      <div class="modal-body">
+        <div class="ats-success-badge-box">
+          <div style="color: var(--btn-success); font-weight: 700; font-size: 14px; margin-bottom: 4px;">Archivo ATS XML listo para el SRI</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">El archivo cumple con la estructura XML del SRI Ecuador para declaraciones mensuales.</div>
+        </div>
+
+        <div style="font-size: 13px; line-height: 1.6; color: var(--text-main);">
+          <p><strong>Archivo:</strong> <span id="atsGeneratedFileName" style="color: var(--btn-primary); font-weight: 700;"></span></p>
+          <p><strong>Comprobantes incluidos:</strong> <span id="atsGeneratedCount" style="color: var(--text-main); font-weight: 700;"></span></p>
+          <p><strong>Ubicación:</strong></p>
+          <div id="atsGeneratedFilePath" class="code-path-box"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnOpenAtsFolder" class="btn btn-secondary">Abrir Carpeta</button>
+        <button id="btnAcceptAtsModal" class="btn btn-primary">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AJUSTE DE IVA POR DISCAPACIDAD -->
+  <div id="discapacidadModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 470px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Ajuste de IVA por Discapacidad</h3>
+        <button id="btnCloseDiscapacidadModal" class="modal-close-btn">x</button>
+      </div>
+      
+      <div class="modal-body">
+        <div id="discapacidadInfoBox" class="inspect-info-box" style="margin-bottom: 12px;">
+          <p><strong>Comprobantes detectados en pantalla:</strong> <span id="discapacidadDetectedRows" style="color: var(--btn-success); font-weight: 700;">0</span></p>
+          <p><strong>Total IVA original:</strong> <span id="discapacidadDetectedTotalIva" style="color: var(--btn-primary); font-weight: 700;">$0.00</span></p>
+        </div>
+
+        <div class="form-group">
+          <label for="selectDiscapacidadRango">Grado de Discapacidad / Porcentaje de Reclamo:</label>
+          <select id="selectDiscapacidadRango" class="ats-select" style="width: 100%; margin-top: 4px;">
+            <option value="60" selected>Del 30% al 49% de discapacidad (Reclamar 60% del IVA)</option>
+            <option value="70">Del 50% al 74% de discapacidad (Reclamar 70% del IVA)</option>
+            <option value="80">Del 75% al 84% de discapacidad (Reclamar 80% del IVA)</option>
+            <option value="100">Del 85% al 100% de discapacidad (Reclamar 100% del IVA)</option>
+            <option value="100_edad">Tercera Edad (Reclamar 100% del IVA)</option>
+            <option value="custom">Personalizado (Ingresar porcentaje manual)</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="groupCustomPorcentaje" style="display: none; margin-top: 8px;">
+          <label for="inputCustomPorcentaje">Porcentaje de IVA a reclamar (%):</label>
+          <input type="number" id="inputCustomPorcentaje" min="1" max="100" value="60" style="width: 100%; margin-top: 4px; background: #ffffff; border: 1px solid #cbd5e1; color: var(--text-main); padding: 7px 10px; border-radius: 6px;">
+        </div>
+
+        <div class="form-group" style="margin-top: 10px;">
+          <label for="selectDefaultTipoGasto">Tipo de Gasto por defecto (opcional):</label>
+          <select id="selectDefaultTipoGasto" class="ats-select" style="width: 100%; margin-top: 4px;">
+            <option value="">(Mantener actual / No modificar)</option>
+            <option value="Alimentación">Alimentación</option>
+            <option value="Salud">Salud</option>
+            <option value="Vestimenta">Vestimenta</option>
+            <option value="Vivienda">Vivienda</option>
+            <option value="Educación">Educación</option>
+          </select>
+        </div>
+
+        <div class="checkbox-group" style="margin-top: 12px;">
+          <input type="checkbox" id="checkMarcarTodas" checked>
+          <label for="checkMarcarTodas">Marcar la casilla "Seleccionar" en todas las facturas</label>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btnCancelDiscapacidadModal" class="btn btn-secondary">Cancelar</button>
+        <button id="btnExecuteDiscapacidadIva" class="btn btn-success">Aplicar a Todas las Facturas</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL FLOTANTE DE PROGRESO DE DESCARGA -->
+  <div id="downloadProgressDrawer" class="download-progress-drawer">
+    <div class="progress-header">
+      <div class="progress-title-group">
+        <span class="progress-spinner" id="progressSpinner"></span>
+        <h4 id="progressDrawerTitle">Descargando Comprobantes SRI</h4>
+      </div>
+      <button id="btnCloseProgressDrawer" class="btn-close-banner" title="Cerrar panel">x</button>
+    </div>
+
+    <!-- Barra de Progreso con Porcentaje Dinámico -->
+    <div class="progress-bar-wrapper">
+      <div class="progress-bar-container">
+        <div id="progressBarFill" class="progress-bar-fill"></div>
+      </div>
+      <span id="progressPercentBadge" class="progress-percent">0%</span>
+    </div>
+
+    <!-- Métricas en Tiempo Real -->
+    <div class="progress-metrics-grid">
+      <div class="progress-metric-item">
+        <span class="metric-label" id="progressMetric1Label">Comprobantes:</span>
+        <span class="metric-val"><strong id="progressCompletedCount" class="count-highlight">0</strong> / <span id="progressTotalInBatch">0</span></span>
+      </div>
+      <div class="progress-metric-item">
+        <span class="metric-label" id="progressMetric2Label">Página actual:</span>
+        <span class="metric-val"><strong id="progressCurrentPage">1</strong> / <span id="progressTotalPages">1</span></span>
+      </div>
+    </div>
+
+    <!-- Archivo actual en procesamiento -->
+    <div class="progress-current-box">
+      <div class="progress-current-label" id="progressCurrentBoxLabel">Archivo en proceso:</div>
+      <div id="progressCurrentFile" class="progress-file-name">Iniciando motor de descargas...</div>
+    </div>
+
+    <!-- Acciones del Drawer -->
+    <div class="progress-footer">
+      <button id="btnCancelDownloadProcess" class="btn btn-secondary btn-sm">Detener Descarga</button>
+      <button id="btnGoToAtsAfterDownload" class="btn btn-primary btn-sm" style="display: none;">Ver en ATS →</button>
+    </div>
+  </div>
+
+  <script src="js/modules/atsModuleView.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

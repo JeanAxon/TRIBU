@@ -1,0 +1,189 @@
+const { app, BrowserWindow, ipcMain, dialog, shell, session } = require('electron');
+const path = require('path');
+const fs = require('fs');
+
+// Fijar nombre de la aplicación y ruta userData consistente en todas las instancias y reinicios
+app.setName('tribu-sri');
+try {
+  const expectedUserData = path.join(app.getPath('appData'), 'tribu-sri');
+  if (app.getPath('userData') !== expectedUserData) {
+    app.setPath('userData', expectedUserData);
+  }
+} catch (e) {
+  console.warn('Aviso al configurar userData:', e.message);
+}
+
+const securityModule = require('../modules/security');
+const DownloadManager = require('./downloadManager');
+const sriAutomation = require('../injected/sriAutomation');
+const atsModule = require('../modules/ats');
+
+let mainWindow = null;
+let downloadManager = null;
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1360,
+    height: 880,
+    minWidth: 1024,
+    minHeight: 700,
+    title: 'TRIBU - Asistente Contable y Descargas SRI Ecuador',
+    backgroundColor: '#0f172a',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      webviewTag: true,
+      nodeIntegration: false,
+      contextIsolation: true,
+      spellcheck: false
+    }
+  });
+
+  downloadManager = new DownloadManager(mainWindow);
+  downloadManager.attachToSession(session.defaultSession);
+
+  mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+}
+
+// Configuración de IPC Handlers
+function setupIpcHandlers() {
+  // =============================================================
+  // REGISTRO DE MÓDULOS DE NEGOCIO, SEGURIDAD Y ATS
+  // =============================================================
+  securityModule.registerIpc(ipcMain);
+  atsModule.registerIpc(ipcMain);
+
+  // Diálogo para seleccionar carpeta
+  ipcMain.handle('dialog:select-folder', async (event, defaultPath) => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Seleccionar Carpeta Base para Clientes SRI',
+      defaultPath: defaultPath || securityModule.clientStorage.getBaseFolder(),
+      properties: ['openDirectory', 'createDirectory']
+    });
+
+    if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+      return null;
+    }
+    return result.filePaths[0];
+  });
+
+  // Abrir carpeta en el Explorador de Windows
+  ipcMain.handle('shell:open-folder', async (event, folderPath) => {
+    if (folderPath) {
+      await shell.openPath(folderPath);
+      return true;
+    }
+    return false;
+  });
+
+  // Configurar destino de descarga con categoría (Ventas/Compras)
+  ipcMain.handle('download:set-target', async (event, { client, customFolder, organizeByType, category }) => {
+    const targetFolder = customFolder || (client ? client.defaultFolder : securityModule.clientStorage.getBaseFolder());
+    downloadManager.setTarget(client, targetFolder, {
+      organizeByType: organizeByType !== false,
+      category: category
+    });
+    
+    if (client && client.ruc) {
+      const clientSession = session.fromPartition(`persist:sri_${client.ruc}`);
+      downloadManager.attachToSession(clientSession);
+    }
+    return true;
+  });
+
+  ipcMain.handle('download:set-category', async (event, category) => {
+    downloadManager.setCategory(category);
+    return true;
+  });
+
+  ipcMain.handle('download:set-expected-info', async (event, info) => {
+    downloadManager.setExpectedFileInfo(info);
+    return true;
+  });
+
+  ipcMain.handle('download:reset-stats', async () => {
+    downloadManager.resetStats();
+    return true;
+  });
+
+  // Función auxiliar para obtener scripts frescos sin problemas de caché de Node.js
+  function getAutomationModule() {
+    try {
+      const resolved = require.resolve('../injected/sriAutomation');
+      delete require.cache[resolved];
+    } catch (e) {}
+    return require('../injected/sriAutomation');
+  }
+
+  // Generadores de scripts de automatización SRI
+  ipcMain.handle('sri:get-login-script', async (event, { ruc, password }) => {
+    return getAutomationModule().getLoginScript(ruc, password);
+  });
+
+  ipcMain.handle('sri:get-capture-script', async () => {
+    return getAutomationModule().getPasswordCaptureScript();
+  });
+
+  ipcMain.handle('sri:get-inspect-script', async () => {
+    return getAutomationModule().getInspectComprobantesScript();
+  });
+
+  ipcMain.handle('sri:get-click-row-script', async (event, rowIndex) => {
+    return getAutomationModule().getClickRowXmlScript(rowIndex);
+  });
+
+  ipcMain.handle('sri:get-next-page-script', async () => {
+    return getAutomationModule().getNextPageScript();
+  });
+
+  ipcMain.handle('sri:get-inspect-discapacidad-script', async () => {
+    return getAutomationModule().getInspectDiscapacidadTableScript();
+  });
+
+  ipcMain.handle('sri:get-apply-discapacidad-script', async (event, config) => {
+    return getAutomationModule().getApplyDiscapacidadIvaScript(config);
+  });
+
+  ipcMain.handle('sri:get-process-reclamo-row-script', async (event, rowIndex) => {
+    return getAutomationModule().getProcessReclamoRowScript(rowIndex);
+  });
+
+  ipcMain.handle('sri:dump-debug', async (event, data) => {
+    try {
+      const p = path.join(process.cwd(), 'live_debug_sri.json');
+      fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf8');
+      console.log('[DEBUG SRI] Guardado volcado de depuración en:', p);
+    } catch (e) {
+      console.warn('[DEBUG SRI] Error guardando volcado:', e);
+    }
+    return true;
+  });
+
+  ipcMain.handle('shell:show-item-in-folder', async (event, fullPath) => {
+    if (fullPath) {
+      shell.showItemInFolder(fullPath);
+      return true;
+    }
+    return false;
+  });
+}
+
+app.whenReady().then(() => {
+  setupIpcHandlers();
+  createWindow();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});

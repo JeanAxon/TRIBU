@@ -1,0 +1,26 @@
+{
+  "name": "tribu-sri",
+  "version": "0.1.0-alpha",
+  "description": "Mini-navegador y gestor de clientes para automatización del SRI Ecuador",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node test/testApp.js && node test/testAtsAndParser.js && node test/testDiscapacidadIva.js && electron test/testClientManager.js && electron test/testSecurityModule.js && electron test/testDuplicateProtocol.js && electron test/test_electron_dom.js"
+  },
+  "keywords": [
+    "sri",
+    "ecuador",
+    "contabilidad",
+    "electron",
+    "automatizacion",
+    "facturas"
+  ],
+  "author": "TRIBU",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^45.2.3"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.12.0"
+  }
+}
