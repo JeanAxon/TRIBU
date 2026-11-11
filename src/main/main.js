@@ -28,6 +28,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     title: 'TRIBU - Asistente Contable y Descargas SRI Ecuador',
+    icon: path.join(__dirname, '../renderer/assets/icon.png'),
     backgroundColor: '#0f172a',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

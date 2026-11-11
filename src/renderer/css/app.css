@@ -178,6 +178,17 @@ body {
   padding: 4px 6px 4px 0;
 }
 
+.brand-logo-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
 .brand-title {
   position: relative;
   z-index: 2;
