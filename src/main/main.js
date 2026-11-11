@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, session, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
@@ -252,7 +252,89 @@ function setupAutoUpdater() {
   }
 }
 
+function setupNativeMenu() {
+  const isMac = process.platform === 'darwin';
+  const template = [
+    ...(isMac ? [{
+      label: 'TRIBU',
+      submenu: [
+        { role: 'about', label: 'Acerca de TRIBU' },
+        { type: 'separator' },
+        { role: 'services', label: 'Servicios' },
+        { type: 'separator' },
+        { role: 'hide', label: 'Ocultar TRIBU' },
+        { role: 'hideOthers', label: 'Ocultar otros' },
+        { role: 'unhide', label: 'Mostrar todo' },
+        { type: 'separator' },
+        { role: 'quit', label: 'Salir de TRIBU' }
+      ]
+    }] : []),
+    {
+      label: 'Archivo',
+      submenu: [
+        isMac ? { role: 'close', label: 'Cerrar ventana' } : { role: 'quit', label: 'Salir' }
+      ]
+    },
+    {
+      label: 'Edición',
+      submenu: [
+        { role: 'undo', label: 'Deshacer' },
+        { role: 'redo', label: 'Rehacer' },
+        { type: 'separator' },
+        { role: 'cut', label: 'Cortar' },
+        { role: 'copy', label: 'Copiar' },
+        { role: 'paste', label: 'Pegar' },
+        { role: 'selectAll', label: 'Seleccionar todo' }
+      ]
+    },
+    {
+      label: 'Ver',
+      submenu: [
+        { role: 'reload', label: 'Recargar' },
+        { role: 'forceReload', label: 'Forzar recarga' },
+        { role: 'toggleDevTools', label: 'Herramientas de desarrollador' },
+        { type: 'separator' },
+        { role: 'resetZoom', label: 'Tamaño original' },
+        { role: 'zoomIn', label: 'Acercar' },
+        { role: 'zoomOut', label: 'Alejar' },
+        { type: 'separator' },
+        { role: 'togglefullscreen', label: 'Pantalla completa' }
+      ]
+    },
+    {
+      label: 'Ventana',
+      submenu: [
+        { role: 'minimize', label: 'Minimizar' },
+        { role: 'zoom', label: 'Maximizar' },
+        ...(isMac ? [
+          { type: 'separator' },
+          { role: 'front', label: 'Traer al frente' },
+          { type: 'separator' },
+          { role: 'window', label: 'Ventana' }
+        ] : [
+          { role: 'close', label: 'Cerrar' }
+        ])
+      ]
+    },
+    {
+      label: 'Ayuda',
+      submenu: [
+        {
+          label: 'Repositorio en GitHub',
+          click: async () => {
+            await shell.openExternal('https://github.com/JeanAxon/TRIBU');
+          }
+        }
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
 app.whenReady().then(() => {
+  setupNativeMenu();
   setupIpcHandlers();
   createWindow();
   setupAutoUpdater();

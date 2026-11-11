@@ -7,6 +7,8 @@
     "start": "electron .",
     "test": "node test/testApp.js && node test/testAtsAndParser.js && node test/testDiscapacidadIva.js && electron test/testClientManager.js && electron test/testSecurityModule.js && electron test/testDuplicateProtocol.js && electron test/test_electron_dom.js",
     "dist": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:all": "electron-builder -mw",
     "dist:dir": "electron-builder --win --dir",
     "dist:portable": "electron-builder --win portable"
   },
@@ -38,6 +40,47 @@
       "src/**/*",
       "package.json"
     ],
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.finance",
+      "minimumSystemVersion": "11.0",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal",
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal",
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
+    },
+    "dmg": {
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
     "win": {
       "icon": "assets/icon.ico",
       "target": [
@@ -61,7 +104,7 @@
     }
   },
   "devDependencies": {
-    "electron": "^45.2.3",
+    "electron": "^37.10.3",
     "electron-builder": "^26.18.0"
   },
   "dependencies": {
