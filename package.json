@@ -68,6 +68,8 @@
       "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
     },
     "dmg": {
+      "icon": "assets/icon.icns",
+      "iconSize": 128,
       "artifactName": "${productName}-${version}-mac-${arch}.${ext}",
       "contents": [
         {
@@ -95,6 +97,9 @@
     },
     "nsis": {
       "artifactName": "${productName}-Setup-${version}.${ext}",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
       "oneClick": true,
       "perMachine": false,
       "allowElevation": true,

@@ -43,7 +43,9 @@ jobs:
 
       - name: Build for macOS (Intel, Apple Silicon and Universal, Big Sur compatible)
         if: startsWith(matrix.os, 'macos')
-        run: npx electron-builder --mac --x64 --arm64 --universal
+        run: |
+          npx electron-builder --mac --x64 --arm64 --universal
+          swift scripts/set-dmg-icon.swift assets/icon.icns dist/*.dmg || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
