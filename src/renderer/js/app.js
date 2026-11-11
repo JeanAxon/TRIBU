@@ -711,48 +711,46 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       card.innerHTML = `
         <div class="card-top-row">
-          <div class="card-identity-group">
-            <div class="client-avatar-badge" aria-hidden="true">${escapeHtml(initials)}</div>
-            <div class="card-company-name" title="${escapeHtml(client.razonSocial)}">${escapeHtml(client.razonSocial)}</div>
-          </div>
-          <div class="card-management-actions">
-            <button class="btn-icon-tiny btn-edit-client" title="Editar cliente y contraseña" aria-label="Editar ${escapeHtml(client.razonSocial)}">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-              <span>Editar</span>
-            </button>
-            <button class="btn-icon-tiny delete btn-delete-client" title="Eliminar cliente" aria-label="Eliminar ${escapeHtml(client.razonSocial)}">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-              </svg>
-              <span>Eliminar</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="card-middle-row">
-          <div class="card-ruc-wrapper">
-            <span class="card-ruc-label">RUC</span>
-            <span class="card-ruc-badge">${escapeHtml(client.ruc)}</span>
-          </div>
           <span class="card-status-badge ${client.hasPassword ? 'status-saved' : 'status-pending'}">
             <span class="status-dot" aria-hidden="true"></span>
             <span>${client.hasPassword ? 'Clave guardada' : 'Sin clave'}</span>
           </span>
+          <div class="card-action-icons">
+            <button class="btn-card-action btn-edit-client" title="Editar cliente y contraseña" aria-label="Editar ${escapeHtml(client.razonSocial)}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </button>
+            <button class="btn-card-action delete btn-delete-client" title="Eliminar cliente" aria-label="Eliminar ${escapeHtml(client.razonSocial)}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </div>
         </div>
 
-        <button class="btn-open-session">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            ${isClientActive 
-              ? '<polyline points="20 6 9 17 4 12"></polyline>' 
-              : '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line>'
-            }
-          </svg>
-          <span>${isClientActive ? 'Sesión SRI Activa' : 'Iniciar Sesión SRI'}</span>
-        </button>
+        <div class="card-identity-body">
+          <div class="client-avatar-badge" aria-hidden="true">${escapeHtml(initials)}</div>
+          <div class="card-company-name" title="${escapeHtml(client.razonSocial)}">${escapeHtml(client.razonSocial)}</div>
+          <div class="card-ruc-wrapper" title="RUC del contribuyente">
+            <span class="card-ruc-label">RUC</span>
+            <span class="card-ruc-badge">${escapeHtml(client.ruc)}</span>
+          </div>
+        </div>
+
+        <div class="card-footer-action">
+          <button class="btn-open-session">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              ${isClientActive 
+                ? '<polyline points="20 6 9 17 4 12"></polyline>' 
+                : '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line>'
+              }
+            </svg>
+            <span>${isClientActive ? 'Sesión SRI Activa' : 'Iniciar Sesión SRI'}</span>
+          </button>
+        </div>
       `;
 
       card.querySelector('.btn-open-session').addEventListener('click', () => startClientSession(client));

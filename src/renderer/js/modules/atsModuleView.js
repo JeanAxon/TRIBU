@@ -64,6 +64,15 @@ class AtsModuleView {
     this.btnOpenAtsFolder = document.getElementById('btnOpenAtsFolder');
     this.btnAcceptAtsModal = document.getElementById('btnAcceptAtsModal');
     this.btnCloseAtsModal = document.getElementById('btnCloseAtsModal');
+
+    // Modal Flotante de Factura Electrónica (RIDE)
+    this.invoiceViewerModal = document.getElementById('invoiceViewerModal');
+    this.invoiceViewerBody = document.getElementById('invoiceViewerBody');
+    this.invViewerDocBadge = document.getElementById('invViewerDocBadge');
+    this.invViewerSerie = document.getElementById('invViewerSerie');
+    this.btnInvoiceOpenFolder = document.getElementById('btnInvoiceOpenFolder');
+    this.btnCloseInvoiceViewer = document.getElementById('btnCloseInvoiceViewer');
+    this.btnDismissInvoiceViewer = document.getElementById('btnDismissInvoiceViewer');
   }
 
   _bindEvents() {
@@ -112,6 +121,18 @@ class AtsModuleView {
     if (this.btnCloseAtsModal) {
       this.btnCloseAtsModal.addEventListener('click', () => {
         this.atsSuccessModal.classList.remove('active');
+      });
+    }
+
+    if (this.btnCloseInvoiceViewer) {
+      this.btnCloseInvoiceViewer.addEventListener('click', () => {
+        this.closeInvoiceViewer();
+      });
+    }
+
+    if (this.btnDismissInvoiceViewer) {
+      this.btnDismissInvoiceViewer.addEventListener('click', () => {
+        this.closeInvoiceViewer();
       });
     }
   }
@@ -373,7 +394,13 @@ class AtsModuleView {
         <td style="text-align: right; font-variant-numeric: tabular-nums; color: #1a56db; font-weight: 700;">$${(valores.total || 0).toFixed(2)}</td>
         <td><span class="badge-pago">${this._escapeHtml(item.formaPago || '20')}</span></td>
         <td style="text-align: center;">
-          <button class="btn-table-action btn-open-xml" title="Mostrar archivo XML en su carpeta">Abrir XML</button>
+          <button class="btn-table-action btn-view-factura" data-index="${index}" title="Ver factura digital (RIDE)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <span>Ver Factura</span>
+          </button>
         </td>
       `;
 
@@ -383,12 +410,10 @@ class AtsModuleView {
         this.state.items[index].codSustento = e.target.value;
       });
 
-      // Botón para revelar el archivo XML en el Explorador de archivos
-      const btnOpenXml = tr.querySelector('.btn-open-xml');
-      btnOpenXml.addEventListener('click', () => {
-        if (item.filePath) {
-          this.api.showItemInFolder(item.filePath);
-        }
+      // Botón para ver la factura en ventana flotante (RIDE oficial)
+      const btnViewFactura = tr.querySelector('.btn-view-factura');
+      btnViewFactura.addEventListener('click', () => {
+        this.openInvoiceViewer(item);
       });
 
       this.tableBody.appendChild(tr);
@@ -480,6 +505,220 @@ class AtsModuleView {
     if (year) folder += `${sep}${year}`;
     if (month) folder += `${sep}${month}`;
     this.api.openFolderInExplorer(folder);
+  }
+
+  /**
+   * Abre la factura en el visor interactivo flotante (Formato RIDE SRI)
+   */
+  openInvoiceViewer(item) {
+    if (!item) return;
+
+    if (!this.invoiceViewerModal) {
+      this.invoiceViewerModal = document.getElementById('invoiceViewerModal');
+      this.invoiceViewerBody = document.getElementById('invoiceViewerBody');
+      this.invViewerDocBadge = document.getElementById('invViewerDocBadge');
+      this.invViewerSerie = document.getElementById('invViewerSerie');
+      this.btnInvoiceOpenFolder = document.getElementById('btnInvoiceOpenFolder');
+    }
+
+    if (!this.invoiceViewerModal || !this.invoiceViewerBody) return;
+
+    if (this.invViewerDocBadge) {
+      this.invViewerDocBadge.textContent = item.tipoDocNombre || 'FACTURA';
+    }
+    if (this.invViewerSerie) {
+      this.invViewerSerie.textContent = `Nº ${item.serie || '000-000-000000000'}`;
+    }
+
+    if (this.btnInvoiceOpenFolder) {
+      this.btnInvoiceOpenFolder.onclick = () => {
+        if (item.filePath && this.api && typeof this.api.showItemInFolder === 'function') {
+          this.api.showItemInFolder(item.filePath);
+        }
+      };
+    }
+
+    this.invoiceViewerBody.innerHTML = this._renderInvoiceRideHtml(item);
+    this.invoiceViewerModal.classList.add('active');
+  }
+
+  closeInvoiceViewer() {
+    if (this.invoiceViewerModal) {
+      this.invoiceViewerModal.classList.remove('active');
+    }
+  }
+
+  _renderInvoiceRideHtml(item) {
+    const emisor = item.emisor || {};
+    const comprador = item.comprador || {};
+    const valores = item.valores || {};
+    const detalles = Array.isArray(item.detalles) ? item.detalles : [];
+    const infoAdicional = item.infoAdicional || {};
+
+    const formasPagoDesc = {
+      '01': 'Sin utilización del sistema financiero',
+      '15': 'Compensación de deudas',
+      '16': 'Tarjeta de débito',
+      '17': 'Dinero electrónico',
+      '18': 'Tarjeta prepago',
+      '19': 'Tarjeta de crédito',
+      '20': 'Otros con utilización del sistema financiero',
+      '21': 'Endoso de títulos'
+    };
+    const pagoNombre = formasPagoDesc[item.formaPago] || 'Otros con utilización del sistema financiero';
+
+    let itemsRows = '';
+    if (detalles.length > 0) {
+      itemsRows = detalles.map(d => `
+        <tr>
+          <td class="mono" style="font-size: 11px; color: var(--muted-foreground);">${this._escapeHtml(d.codigo || '-')}</td>
+          <td style="text-align: center; font-variant-numeric: tabular-nums;">${(d.cantidad || 1).toFixed(2)}</td>
+          <td style="font-weight: 500;">${this._escapeHtml(d.descripcion || 'Sin descripción')}</td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums;">$${(d.precioUnitario || 0).toFixed(2)}</td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums;">$${(d.descuento || 0).toFixed(2)}</td>
+          <td style="text-align: right; font-weight: 600; font-variant-numeric: tabular-nums;">$${(d.precioTotal || 0).toFixed(2)}</td>
+        </tr>
+      `).join('');
+    } else {
+      itemsRows = `
+        <tr>
+          <td class="mono" style="font-size: 11px; color: var(--muted-foreground);">001</td>
+          <td style="text-align: center; font-variant-numeric: tabular-nums;">1.00</td>
+          <td style="font-weight: 500;">CONSUMO / ADQUISICIÓN SEGÚN FACTURA ELECTRÓNICA</td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums;">$${(valores.baseGravada || valores.base0 || 0).toFixed(2)}</td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums;">$0.00</td>
+          <td style="text-align: right; font-weight: 600; font-variant-numeric: tabular-nums;">$${(valores.baseGravada || valores.base0 || 0).toFixed(2)}</td>
+        </tr>
+      `;
+    }
+
+    const infoKeys = Object.keys(infoAdicional);
+    let infoAdicionalHtml = '';
+    if (infoKeys.length > 0) {
+      infoAdicionalHtml = `
+        <div class="ride-info-adicional-block">
+          <div class="ride-subheading">Información Adicional</div>
+          ${infoKeys.map(k => `
+            <div class="ride-info-item">
+              <strong>${this._escapeHtml(k)}:</strong> <span>${this._escapeHtml(infoAdicional[k])}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    return `
+      <div class="ride-invoice-layout">
+        <!-- 1. Cabecera SRI en 2 columnas -->
+        <div class="ride-header-cards">
+          <!-- Tarjeta Emisor -->
+          <div class="ride-card ride-card-emitter">
+            <h4 class="ride-emitter-name">${this._escapeHtml(emisor.razonSocial || 'Emisor')}</h4>
+            ${emisor.nombreComercial && emisor.nombreComercial !== emisor.razonSocial 
+              ? `<div class="ride-emitter-trade">${this._escapeHtml(emisor.nombreComercial)}</div>` 
+              : ''}
+            <div class="ride-emitter-info">
+              <div><strong>Matriz:</strong> ${this._escapeHtml(emisor.dirMatriz || 'No registrada')}</div>
+              <div><strong>Sucursal:</strong> ${this._escapeHtml(emisor.dirEstablecimiento || emisor.dirMatriz || 'Matriz')}</div>
+              <div class="ride-emitter-badges">
+                <span class="ride-tag">Obligado Contabilidad: <strong>${this._escapeHtml(emisor.obligadoContabilidad || 'NO')}</strong></span>
+                ${emisor.contribuyenteEspecial ? `<span class="ride-tag">Contribuyente Especial: <strong>${this._escapeHtml(emisor.contribuyenteEspecial)}</strong></span>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <!-- Tarjeta Datos Oficiales SRI -->
+          <div class="ride-card ride-card-sri">
+            <div class="ride-ruc-line">
+              <span class="ride-ruc-lbl">R.U.C.:</span>
+              <span class="ride-ruc-val">${this._escapeHtml(emisor.ruc || '')}</span>
+            </div>
+            <div class="ride-doc-title">${this._escapeHtml(item.tipoDocNombre ? item.tipoDocNombre.toUpperCase() : 'FACTURA')}</div>
+            <div class="ride-doc-serie">No. ${this._escapeHtml(item.serie || '001-001-000000001')}</div>
+
+            <div class="ride-auth-block">
+              <div class="ride-auth-label">NÚMERO DE AUTORIZACIÓN / CLAVE DE ACCESO:</div>
+              <div class="ride-auth-number">${this._escapeHtml(item.claveAcceso || item.numeroAutorizacion || '')}</div>
+            </div>
+
+            <div class="ride-sri-meta">
+              <div><strong>Fecha Autorización:</strong> ${this._escapeHtml(item.fechaAutorizacion || item.fechaEmision || '')}</div>
+              <div><strong>Ambiente:</strong> PRODUCCIÓN &nbsp;|&nbsp; <strong>Emisión:</strong> NORMAL</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Franja de Datos del Comprador -->
+        <div class="ride-buyer-panel">
+          <div class="ride-buyer-col">
+            <div><span class="lbl">Razón Social / Nombres:</span> <strong>${this._escapeHtml(comprador.razonSocial || 'CONSUMIDOR FINAL')}</strong></div>
+            <div><span class="lbl">Identificación:</span> <span class="mono">${this._escapeHtml(comprador.identificacion || '9999999999999')}</span></div>
+          </div>
+          <div class="ride-buyer-col">
+            <div><span class="lbl">Fecha Emisión:</span> <strong>${this._escapeHtml(item.fechaEmision || '')}</strong></div>
+            <div><span class="lbl">Dirección:</span> <span>${this._escapeHtml(comprador.direccion || 'N/A')}</span></div>
+          </div>
+        </div>
+
+        <!-- 3. Tabla de Productos y Servicios -->
+        <div class="ride-items-wrapper">
+          <table class="ride-table">
+            <thead>
+              <tr>
+                <th style="width: 12%;">Código</th>
+                <th style="width: 9%; text-align: center;">Cantidad</th>
+                <th style="width: 45%;">Descripción</th>
+                <th style="width: 11%; text-align: right;">P. Unitario</th>
+                <th style="width: 11%; text-align: right;">Descuento</th>
+                <th style="width: 12%; text-align: right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsRows}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 4. Liquidación y Formas de Pago -->
+        <div class="ride-bottom-grid">
+          <!-- Columna Izquierda: Pagos y Notas -->
+          <div class="ride-payment-col">
+            <div class="ride-subheading">Forma de Pago</div>
+            <div class="ride-payment-card">
+              <span class="payment-code">${this._escapeHtml(item.formaPago || '20')}</span>
+              <span class="payment-name">${this._escapeHtml(pagoNombre)}</span>
+            </div>
+            ${infoAdicionalHtml}
+          </div>
+
+          <!-- Columna Derecha: Totales -->
+          <div class="ride-totals-col">
+            <table class="ride-totals-table">
+              <tr>
+                <td>SUBTOTAL ${valores.tarifaIvaPorcentaje || 15}%:</td>
+                <td class="num">$${(valores.baseGravada || 0).toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td>SUBTOTAL 0%:</td>
+                <td class="num">$${(valores.base0 || 0).toFixed(2)}</td>
+              </tr>
+              ${valores.baseNoObjeto > 0 ? `<tr><td>SUBTOTAL NO OBJETO:</td><td class="num">$${valores.baseNoObjeto.toFixed(2)}</td></tr>` : ''}
+              ${valores.baseExenta > 0 ? `<tr><td>SUBTOTAL EXENTO:</td><td class="num">$${valores.baseExenta.toFixed(2)}</td></tr>` : ''}
+              ${valores.totalDescuento > 0 ? `<tr><td>TOTAL DESCUENTO:</td><td class="num">-$${valores.totalDescuento.toFixed(2)}</td></tr>` : ''}
+              <tr>
+                <td>IVA ${valores.tarifaIvaPorcentaje || 15}%:</td>
+                <td class="num">$${(valores.montoIva || 0).toFixed(2)}</td>
+              </tr>
+              ${valores.propina > 0 ? `<tr><td>PROPINA:</td><td class="num">$${valores.propina.toFixed(2)}</td></tr>` : ''}
+              <tr class="ride-grand-total">
+                <td>VALOR TOTAL:</td>
+                <td class="num grand-val">$${(valores.total || 0).toFixed(2)}</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   _escapeHtml(str) {

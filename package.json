@@ -5,7 +5,7 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node test/testApp.js && node test/testAtsAndParser.js && node test/testDiscapacidadIva.js && electron test/testClientManager.js && electron test/testSecurityModule.js && electron test/testDuplicateProtocol.js && electron test/test_electron_dom.js",
+    "test": "node test/testApp.js && node test/testAtsAndParser.js && node test/testDiscapacidadIva.js && node test/testInvoiceViewer.js && electron test/testClientManager.js && electron test/testSecurityModule.js && electron test/testDuplicateProtocol.js && electron test/test_electron_dom.js",
     "dist": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
     "dist:all": "electron-builder -mw",

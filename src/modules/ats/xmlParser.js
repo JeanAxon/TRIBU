@@ -169,8 +169,12 @@ function parseXmlFile(filePath) {
       total = base0 + baseGravada + montoIva + montoIce + baseNoObjeto + baseExenta;
     }
 
+    const totalDescuento = toFloat(infoDoc.totalDescuento || 0);
+    const propina = toFloat(infoDoc.propina || 0);
+
     // Formas de pago
     let formaPago = '20'; // Por defecto: Otros con utilización del sistema financiero
+    let formaPagoDescripcion = 'Otros con utilización del sistema financiero';
     if (infoDoc.pagos && infoDoc.pagos.pago) {
       let pagos = infoDoc.pagos.pago;
       if (!Array.isArray(pagos)) pagos = [pagos];
@@ -183,11 +187,50 @@ function parseXmlFile(filePath) {
     const rucEmisor = infoTributaria.ruc || '';
     const razonSocialEmisor = infoTributaria.razonSocial || '';
     const nombreComercialEmisor = infoTributaria.nombreComercial || razonSocialEmisor;
+    const dirMatriz = infoTributaria.dirMatriz || '';
+    const dirEstablecimiento = infoDoc.dirEstablecimiento || dirMatriz;
+    const obligadoContabilidad = infoDoc.obligadoContabilidad || 'NO';
+    const contribuyenteEspecial = infoDoc.contribuyenteEspecial || '';
 
     // Cliente o Comprador
     const idComprador = infoDoc.identificacionComprador || '';
     const razonSocialComprador = infoDoc.razonSocialComprador || '';
     const tipoIdComprador = infoDoc.tipoIdentificacionComprador || '04';
+    const direccionComprador = infoDoc.direccionComprador || '';
+
+    // Extraer detalles / ítems del comprobante (para visualización RIDE / formato factura)
+    const items = [];
+    const detallesContainer = doc.detalles;
+    if (detallesContainer) {
+      let rawDetalles = detallesContainer.detalle;
+      if (!Array.isArray(rawDetalles)) {
+        rawDetalles = rawDetalles ? [rawDetalles] : [];
+      }
+      for (const d of rawDetalles) {
+        items.push({
+          codigo: d.codigoPrincipal || d.codigoInterno || '-',
+          descripcion: d.descripcion || 'Sin descripción',
+          cantidad: toFloat(d.cantidad || 1),
+          precioUnitario: toFloat(d.precioUnitario || 0),
+          descuento: toFloat(d.descuento || 0),
+          precioTotal: toFloat(d.precioTotalSinImpuesto || 0)
+        });
+      }
+    }
+
+    // Información adicional (Emails, teléfonos, notas)
+    const infoAdicional = {};
+    if (doc.infoAdicional && doc.infoAdicional.campoAdicional) {
+      let campos = doc.infoAdicional.campoAdicional;
+      if (!Array.isArray(campos)) campos = [campos];
+      for (const c of campos) {
+        const nombre = c['@_nombre'] || c.nombre || 'Info';
+        const valor = c['#text'] || (typeof c === 'string' ? c : '');
+        if (nombre && valor) {
+          infoAdicional[String(nombre).trim()] = String(valor).trim();
+        }
+      }
+    }
 
     // Determinar tipo de proveedor para ATS
     let tpIdProv = TIPO_IDENTIFICACION_PROVEEDOR.RUC;
@@ -229,13 +272,18 @@ function parseXmlFile(filePath) {
         ruc: rucEmisor,
         razonSocial: razonSocialEmisor,
         nombreComercial: nombreComercialEmisor,
+        dirMatriz,
+        dirEstablecimiento,
+        obligadoContabilidad,
+        contribuyenteEspecial,
         tpIdProv,
         tipoProv
       },
       comprador: {
         identificacion: idComprador,
         razonSocial: razonSocialComprador,
-        tipoId: tipoIdComprador
+        tipoId: tipoIdComprador,
+        direccion: direccionComprador
       },
       valores: {
         base0: toFloat(base0),
@@ -245,8 +293,12 @@ function parseXmlFile(filePath) {
         montoIva: toFloat(montoIva),
         montoIce: toFloat(montoIce),
         tarifaIvaPorcentaje,
+        totalDescuento,
+        propina,
         total: toFloat(total)
       },
+      detalles: items,
+      infoAdicional,
       codSustento,
       formaPago
     };

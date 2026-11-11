@@ -1192,11 +1192,11 @@ body {
   border-color: var(--input);
 }
 
-/* Tarjetas de Clientes (Estilo shadcn/ui Card + Swiss Minimalism) */
+/* Tarjetas de Clientes Cuadradas, Proporcionadas y Elegantes */
 .clients-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 280px));
+  gap: 20px;
 }
 
 .client-card {
@@ -1206,7 +1206,8 @@ body {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  justify-content: space-between;
+  min-height: 252px;
   box-shadow: var(--shadow-xs);
   transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
   position: relative;
@@ -1215,7 +1216,7 @@ body {
 .client-card:hover {
   border-color: var(--primary-soft-border);
   box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 .client-card:focus-within {
@@ -1228,43 +1229,93 @@ body {
   background: linear-gradient(180deg, var(--card) 0%, rgba(12, 69, 151, 0.02) 100%);
 }
 
+/* Fila Superior: Badge de Estado a la izquierda y Botones de Acción a la derecha */
 .card-top-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+  width: 100%;
 }
 
-.card-identity-group {
+.card-action-icons {
   display: flex;
   align-items: center;
+  gap: 4px;
+}
+
+.btn-card-action {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background-color: var(--secondary);
+  border: 1px solid var(--border);
+  color: var(--muted-foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  padding: 0;
+}
+
+.btn-card-action:hover {
+  color: var(--foreground);
+  background-color: var(--muted-hover);
+  border-color: var(--input);
+}
+
+.btn-card-action:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.btn-card-action.delete:hover {
+  color: #ffffff;
+  background-color: var(--destructive);
+  border-color: var(--destructive);
+}
+
+/* Cuerpo Central Centrado (Avatar, Nombre y RUC) */
+.card-identity-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   gap: 10px;
-  min-width: 0;
+  padding: 6px 0;
   flex: 1;
+  justify-content: center;
 }
 
 .client-avatar-badge {
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-md);
-  background-color: var(--secondary);
-  color: var(--secondary-foreground);
-  border: 1px solid var(--border);
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--card) 100%);
+  color: var(--primary);
+  border: 1.5px solid var(--border);
   font-family: var(--font-sans);
   font-weight: 700;
-  font-size: 12.5px;
+  font-size: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   letter-spacing: -0.02em;
   user-select: none;
+  box-shadow: var(--shadow-xs);
+  transition: transform var(--transition-fast);
+}
+
+.client-card:hover .client-avatar-badge {
+  transform: scale(1.04);
 }
 
 .client-card.client-card-active .client-avatar-badge {
-  background-color: var(--primary-soft);
-  color: var(--primary);
-  border-color: var(--primary-soft-border);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  color: #ffffff;
+  border-color: var(--primary);
 }
 
 .card-company-name {
@@ -1272,86 +1323,40 @@ body {
   font-weight: 600;
   color: var(--card-foreground);
   line-height: 1.35;
-  white-space: nowrap;
+  text-align: center;
+  width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.card-management-actions {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
-}
-
-.btn-icon-tiny {
-  background-color: var(--secondary);
-  border: 1px solid var(--border);
-  color: var(--secondary-foreground);
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  font-size: 11.5px;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  transition: var(--transition-fast);
-}
-
-.btn-icon-tiny svg {
-  flex-shrink: 0;
-}
-
-.btn-icon-tiny:hover {
-  color: var(--foreground);
-  background-color: var(--muted-hover);
-  border-color: var(--input);
-}
-
-.btn-icon-tiny:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 1px;
-}
-
-.btn-icon-tiny.delete:hover {
-  color: #ffffff;
-  background-color: var(--destructive);
-  border-color: var(--destructive);
-}
-
-.card-middle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 4px 0;
+  min-height: 36px;
+  word-break: break-word;
 }
 
 .card-ruc-wrapper {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  background-color: var(--secondary);
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
 }
 
 .card-ruc-label {
-  font-size: 10.5px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: var(--muted-foreground);
 }
 
 .card-ruc-badge {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
-  background-color: var(--secondary);
-  color: var(--secondary-foreground);
-  padding: 2.5px 8px;
-  border-radius: var(--radius-xs);
-  border: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--foreground);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -1393,16 +1398,22 @@ body {
   background-color: var(--warning);
 }
 
+/* Pie de Tarjeta: Botón de Sesión SRI */
+.card-footer-action {
+  width: 100%;
+  margin-top: 4px;
+}
+
 .btn-open-session {
   width: 100%;
-  height: 34px;
+  height: 36px;
   background-color: var(--primary);
   color: #ffffff;
   border: 1px solid var(--primary);
   border-radius: var(--radius-md);
   padding: 0 12px;
   font-weight: 600;
-  font-size: 12.5px;
+  font-size: 12px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -1882,7 +1893,7 @@ body {
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 9999;
   padding: 16px;
   animation: modalOverlayFade 140ms ease-out forwards;
 }
@@ -2919,4 +2930,431 @@ body.theme-dark .user-dropdown-item.active {
 
 .btn-update-close:hover {
   color: #ffffff;
+}
+
+/* =============================================================
+   VISOR FLOTANTE DE FACTURA ELECTRÓNICA SRI (RIDE)
+   ============================================================= */
+.modal-content.invoice-modal-content {
+  background-color: var(--card);
+  max-width: 860px;
+  width: 92vw;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.15);
+}
+
+.invoice-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--card);
+}
+
+.invoice-header-title-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.invoice-doc-badge {
+  background-color: var(--primary);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.invoice-header-serie {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.invoice-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-invoice-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--secondary);
+  border: 1px solid var(--border);
+  color: var(--secondary-foreground);
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.btn-invoice-action:hover {
+  background-color: var(--muted-hover);
+  border-color: var(--input);
+  color: var(--foreground);
+}
+
+.invoice-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  max-height: calc(88vh - 125px);
+  background-color: var(--background);
+}
+
+.invoice-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  background-color: var(--card);
+}
+
+.invoice-esc-hint {
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+}
+
+.invoice-esc-hint kbd {
+  background-color: var(--secondary);
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--foreground);
+}
+
+/* Layout del Documento RIDE */
+.ride-invoice-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.ride-header-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.ride-card {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  box-shadow: var(--shadow-xs);
+}
+
+.ride-emitter-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--card-foreground);
+  margin: 0 0 4px 0;
+  line-height: 1.3;
+}
+
+.ride-emitter-trade {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+.ride-emitter-info {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--foreground);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ride-emitter-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.ride-tag {
+  background-color: var(--secondary);
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  font-size: 10.5px;
+  color: var(--muted-foreground);
+}
+
+.ride-card-sri {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ride-ruc-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.ride-ruc-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted-foreground);
+}
+
+.ride-ruc-val {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 0.04em;
+}
+
+.ride-doc-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--foreground);
+  letter-spacing: 0.05em;
+}
+
+.ride-doc-serie {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 4px;
+}
+
+.ride-auth-block {
+  background-color: var(--secondary);
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+}
+
+.ride-auth-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  letter-spacing: 0.03em;
+  margin-bottom: 2px;
+}
+
+.ride-auth-number {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+  color: var(--foreground);
+  line-height: 1.3;
+}
+
+.ride-sri-meta {
+  font-size: 10.5px;
+  color: var(--muted-foreground);
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+/* Franja Comprador */
+.ride-buyer-panel {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-xs);
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 12px;
+}
+
+.ride-buyer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.ride-buyer-col .lbl {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
+/* Tabla de Ítems */
+.ride-items-wrapper {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-xs);
+}
+
+.ride-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ride-table th {
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ride-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+.ride-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Liquidación y Pagos */
+.ride-bottom-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 16px;
+}
+
+.ride-payment-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ride-subheading {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ride-payment-card {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.ride-payment-card .payment-code {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  background-color: var(--secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.ride-info-adicional-block {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ride-info-item {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--foreground);
+}
+
+.ride-totals-col {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  box-shadow: var(--shadow-xs);
+}
+
+.ride-totals-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ride-totals-table td {
+  padding: 4px 0;
+  color: var(--muted-foreground);
+}
+
+.ride-totals-table td.num {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.ride-totals-table tr.ride-grand-total td {
+  padding-top: 8px;
+  border-top: 1.5px solid var(--border);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.ride-totals-table tr.ride-grand-total td.grand-val {
+  color: var(--primary);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* Botón Ver Factura en la Tabla ATS */
+.btn-view-factura {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background-color: var(--primary);
+  color: #ffffff !important;
+  border: 1px solid var(--primary);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.btn-view-factura:hover {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.btn-view-factura svg {
+  flex-shrink: 0;
 }
