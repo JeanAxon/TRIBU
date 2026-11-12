@@ -41,4 +41,33 @@ assert(dm.expectedInfo.year === '2025', 'El año debe ser 2025');
 assert(dm.expectedInfo.filename.includes('MINERA DEL VALLE'), 'Debe contener la Razón Social');
 console.log('[OK] Formato de guardado con Fecha y Razón Social validado con éxito');
 
+// 6. Probar scripts de Ventas (Emitidos) día por día
+const ventasFilterScript = sriAutomation.getVentasFilterInfoScript();
+assert(typeof ventasFilterScript === 'string', 'ventasFilterScript debe ser un string');
+assert(ventasFilterScript.includes('isVentasPage'), 'ventasFilterScript debe detectar estado de página de ventas');
+assert(ventasFilterScript.includes('daysInMonth'), 'ventasFilterScript debe calcular los días del mes');
+console.log('[OK] Script de información de filtro de Ventas generado con éxito');
+
+const setVentasDateScript = sriAutomation.getSetVentasDateAndSearchScript('29/10/2026');
+assert(typeof setVentasDateScript === 'string', 'setVentasDateScript debe ser un string');
+assert(setVentasDateScript.includes('29/10/2026'), 'setVentasDateScript debe contener la fecha objetivo');
+assert(setVentasDateScript.includes('consultBtn'), 'setVentasDateScript debe accionar el botón Consultar');
+console.log('[OK] Script de asignación de fecha y búsqueda de Ventas generado con éxito');
+
+// 7. Probar formato de guardado de Ventas en DownloadManager
+const dmVentas = new DownloadManager(null);
+dmVentas.setCategory('Ventas');
+assert(dmVentas.currentCategory === 'Ventas', 'La categoría debe ser Ventas');
+dmVentas.setExpectedFileInfo({
+  filename: '2026-10-29 - Factura 001-002-000000008.xml',
+  year: '2026',
+  month: '10 - Octubre',
+  fechaEmision: '2026-10-29',
+  tipoSerie: 'Factura 001-002-000000008',
+  claveAcceso: '2910202601110538366300120010020000000088176807211'
+});
+assert(dmVentas.expectedInfo.year === '2026', 'El año de venta debe ser 2026');
+assert(dmVentas.expectedInfo.filename === '2026-10-29 - Factura 001-002-000000008.xml', 'El nombre debe ser fecha y serie');
+console.log('[OK] Formato de guardado de Ventas (Emitidos) validado con éxito');
+
 console.log('--- Todas las pruebas pasaron satisfactoriamente ---');

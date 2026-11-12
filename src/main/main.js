@@ -176,6 +176,14 @@ function setupIpcHandlers() {
     return getAutomationModule().getNavigateToSriSectionScript(target);
   });
 
+  ipcMain.handle('sri:get-ventas-filter-info-script', async () => {
+    return getAutomationModule().getVentasFilterInfoScript();
+  });
+
+  ipcMain.handle('sri:get-set-ventas-date-script', async (event, dateStr) => {
+    return getAutomationModule().getSetVentasDateAndSearchScript(dateStr);
+  });
+
   ipcMain.handle('sri:dump-debug', async (event, data) => {
     try {
       const p = path.join(process.cwd(), 'live_debug_sri.json');

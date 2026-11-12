@@ -909,17 +909,18 @@
         </p>
 
         <div class="form-group" style="margin-top: 10px;">
-          <label>Alcance de la descarga:</label>
+          <label id="bulkScopeLabel">Alcance de la descarga:</label>
           <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px; font-size: 13px;">
             <label class="checkbox-group">
-              <input type="radio" name="downloadScope" value="all" checked>
-              <span>Todas las páginas (Recorrer automáticamente)</span>
+              <input type="radio" id="bulkScopeOption1Radio" name="downloadScope" value="all" checked>
+              <span id="bulkScopeOption1Text">Todas las páginas (Recorrer automáticamente)</span>
             </label>
             <label class="checkbox-group">
-              <input type="radio" name="downloadScope" value="single">
-              <span>Solo la página actual</span>
+              <input type="radio" id="bulkScopeOption2Radio" name="downloadScope" value="single">
+              <span id="bulkScopeOption2Text">Solo la página actual</span>
             </label>
           </div>
+          <p id="bulkScopeHint" style="font-size: 11px; color: var(--text-muted); margin-top: 6px; display: none;"></p>
         </div>
       </div>
       <div class="modal-footer">

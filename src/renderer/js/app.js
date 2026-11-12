@@ -1615,18 +1615,67 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!currentWebview) return;
 
     try {
-      const inspectScript = await window.tribuApi.getInspectScript();
-      const info = await currentWebview.executeJavaScript(inspectScript);
+      const [inspectScript, vInfoScript] = await Promise.all([
+        window.tribuApi.getInspectScript(),
+        window.tribuApi.getVentasFilterInfoScript()
+      ]);
 
+      const [info, vInfo] = await Promise.all([
+        currentWebview.executeJavaScript(inspectScript),
+        currentWebview.executeJavaScript(vInfoScript)
+      ]);
+
+      const isVentas = Boolean(vInfo && vInfo.isVentasPage);
       const totalRows = (info && (info.totalRowsOnPage || info.rowCount || (info.rows && info.rows.length))) || 0;
+
+      const bulkModalTitle = document.getElementById('bulkModalTitle');
+      const bulkScopeOption1Radio = document.getElementById('bulkScopeOption1Radio');
+      const bulkScopeOption2Radio = document.getElementById('bulkScopeOption2Radio');
+      const bulkScopeOption1Text = document.getElementById('bulkScopeOption1Text');
+      const bulkScopeOption2Text = document.getElementById('bulkScopeOption2Text');
+      const bulkScopeHint = document.getElementById('bulkScopeHint');
+
+      if (isVentas) {
+        if (bulkModalTitle) bulkModalTitle.textContent = 'Descarga de Ventas (Emitidos)';
+        bulkDetectedCategory.textContent = 'Ventas (Emitidos)';
+        bulkDetectedRows.textContent = `${totalRows} (en fecha ${vInfo.currentDate || 'actual'})`;
+        bulkDetectedPages.textContent = info && info.totalPages > 1 ? `${info.totalPages} páginas` : '1 fecha';
+
+        if (bulkScopeOption1Radio) bulkScopeOption1Radio.value = 'month_iteration';
+        if (bulkScopeOption1Text) {
+          bulkScopeOption1Text.textContent = `Recorrer todo el mes día por día (1 al ${vInfo.daysInMonth} de ${vInfo.monthName} ${vInfo.year})`;
+        }
+        if (bulkScopeOption2Radio) bulkScopeOption2Radio.value = 'single';
+        if (bulkScopeOption2Text) {
+          bulkScopeOption2Text.textContent = `Solo la fecha actual en pantalla (${vInfo.currentDate || 'fecha'})`;
+        }
+        if (bulkScopeHint) {
+          bulkScopeHint.style.display = 'block';
+          bulkScopeHint.textContent = `El portal del SRI solo permite consultar ventas fecha por fecha. Tribu recorrerá automáticamente los ${vInfo.daysInMonth} días del mes y descargará los comprobantes encontrados.`;
+        }
+        if (bulkScopeOption1Radio) bulkScopeOption1Radio.checked = true;
+
+        bulkDownloadModal.classList.add('active');
+        return;
+      }
+
+      // Si es Compras u otra vista
       if (!info || !info.hasTable || totalRows === 0) {
         alert('No se detectó ninguna tabla de comprobantes en la pantalla actual del SRI.\n\nVe a "Comprobantes electrónicos recibidos" o "emitidos", realiza la búsqueda de fechas, y presiona este botón nuevamente.');
         return;
       }
 
-      bulkDetectedCategory.textContent = info.category || 'Comprobantes';
+      if (bulkModalTitle) bulkModalTitle.textContent = 'Descarga de Comprobantes XML';
+      bulkDetectedCategory.textContent = info.category || 'Compras (Recibidos)';
       bulkDetectedRows.textContent = totalRows;
       bulkDetectedPages.textContent = info.totalPages > 1 ? `${info.totalPages} páginas detectadas` : '1 página';
+
+      if (bulkScopeOption1Radio) bulkScopeOption1Radio.value = 'all';
+      if (bulkScopeOption1Text) bulkScopeOption1Text.textContent = 'Todas las páginas (Recorrer automáticamente)';
+      if (bulkScopeOption2Radio) bulkScopeOption2Radio.value = 'single';
+      if (bulkScopeOption2Text) bulkScopeOption2Text.textContent = 'Solo la página actual';
+      if (bulkScopeHint) bulkScopeHint.style.display = 'none';
+      if (bulkScopeOption1Radio) bulkScopeOption1Radio.checked = true;
 
       bulkDownloadModal.classList.add('active');
     } catch (err) {
@@ -1646,9 +1695,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     bulkDownloadModal.classList.remove('active');
 
     const scopeRadio = document.querySelector('input[name="downloadScope"]:checked');
-    const downloadAllPages = scopeRadio ? scopeRadio.value === 'all' : true;
+    const scopeValue = scopeRadio ? scopeRadio.value : 'all';
 
-    startBulkDownloadProcess(downloadAllPages);
+    if (scopeValue === 'month_iteration') {
+      startVentasMonthIterationProcess();
+    } else {
+      const downloadAllPages = scopeValue === 'all';
+      startBulkDownloadProcess(downloadAllPages);
+    }
   });
 
   async function startBulkDownloadProcess(allPages = true) {
@@ -1802,6 +1856,160 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (progressSpinner) progressSpinner.style.display = 'none';
       progressCurrentFile.textContent = 'Error: ' + err.message;
       showBanner('Error en descarga: ' + err.message, 'warning', 1000);
+      dismissProgressDrawer(1000);
+    } finally {
+      state.isBulkDownloading = false;
+    }
+  }
+
+  async function startVentasMonthIterationProcess() {
+    if (state.isBulkDownloading || !currentWebview) return;
+
+    state.isBulkDownloading = true;
+    state.cancelBulkDownload = false;
+
+    await window.tribuApi.resetDownloadStats();
+    await window.tribuApi.setDownloadCategory('Ventas');
+
+    let vInfo = null;
+    try {
+      const vScript = await window.tribuApi.getVentasFilterInfoScript();
+      vInfo = await currentWebview.executeJavaScript(vScript);
+    } catch (e) {
+      console.warn('Aviso obteniendo datos de filtro de ventas:', e);
+    }
+
+    const year = (vInfo && vInfo.year) || new Date().getFullYear();
+    const month = (vInfo && vInfo.month) || (new Date().getMonth() + 1);
+    const monthName = (vInfo && vInfo.monthName) || 'Mes';
+    const daysInMonth = (vInfo && vInfo.daysInMonth) || new Date(year, month, 0).getDate();
+
+    downloadProgressDrawer.classList.add('active');
+    progressBarFill.style.width = '0%';
+    progressPercentBadge.textContent = '0%';
+    progressCompletedCount.textContent = '0';
+    progressCurrentPage.textContent = `1/${daysInMonth}`;
+    progressTotalPages.textContent = String(daysInMonth);
+    progressTotalInBatch.textContent = '...';
+    progressDrawerTitle.textContent = `Descargando Ventas (${monthName} ${year})`;
+    if (progressMetric1Label) progressMetric1Label.textContent = 'Facturas guardadas:';
+    if (progressMetric2Label) progressMetric2Label.textContent = 'Día del mes:';
+    if (progressCurrentBoxLabel) progressCurrentBoxLabel.textContent = 'Estado de consulta:';
+    if (progressSpinner) progressSpinner.style.display = 'inline-block';
+    if (btnCancelDownloadProcess) {
+      btnCancelDownloadProcess.textContent = 'Detener Descarga';
+      btnCancelDownloadProcess.style.display = 'inline-flex';
+    }
+    if (btnGoToAtsAfterDownload) btnGoToAtsAfterDownload.style.display = 'none';
+
+    let totalDownloaded = 0;
+
+    try {
+      for (let day = 1; day <= daysInMonth; day++) {
+        if (state.cancelBulkDownload) break;
+
+        const dateStr = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+        progressCurrentPage.textContent = `${day}/${daysInMonth}`;
+        progressCurrentFile.textContent = `Consultando ventas del día ${dateStr}...`;
+
+        const dayPercent = Math.round(((day - 1) / daysInMonth) * 100);
+        progressBarFill.style.width = `${dayPercent}%`;
+        progressPercentBadge.textContent = `${dayPercent}%`;
+
+        // 1. Establecer fecha en el formulario y consultar
+        const searchScript = await window.tribuApi.getSetVentasDateAndSearchScript(dateStr);
+        await currentWebview.executeJavaScript(searchScript);
+
+        // 2. Esperar respuesta de PrimeFaces AJAX
+        await new Promise(r => setTimeout(r, 2200));
+
+        // 3. Inspeccionar tabla resultante
+        const inspectScript = await window.tribuApi.getInspectScript();
+        const pageInfo = await currentWebview.executeJavaScript(inspectScript);
+
+        const rows = (pageInfo && pageInfo.rows) || [];
+        const totalInDay = rows.length;
+
+        if (pageInfo && pageInfo.hasTable && totalInDay > 0) {
+          progressTotalInBatch.textContent = `${totalInDay} en este día`;
+          progressCurrentFile.textContent = `Día ${dateStr}: ${totalInDay} facturas encontradas. Descargando XMLs...`;
+
+          for (let i = 0; i < totalInDay; i++) {
+            if (state.cancelBulkDownload) break;
+
+            const rowData = rows[i] || {};
+            const displayName = rowData.filename || `${dateStr} - ${rowData.tipoSerie || 'Factura'}`;
+            progressCurrentFile.textContent = `[${day}/${daysInMonth}] Guardando: ${displayName}`;
+
+            await window.tribuApi.setExpectedFileInfo({
+              fechaEmision: rowData.fechaEmision,
+              razonSocial: 'Venta',
+              tipoComprobante: rowData.tipoComprobante || 'Factura',
+              numeroComprobante: rowData.numeroComprobante,
+              tipoSerie: rowData.tipoSerie,
+              claveAcceso: rowData.claveAcceso,
+              filename: rowData.filename,
+              year: String(year),
+              month: rowData.month
+            });
+
+            const clickScript = await window.tribuApi.getClickRowXmlScript(i);
+            const clickRes = await currentWebview.executeJavaScript(clickScript);
+
+            if (clickRes && clickRes.success) {
+              totalDownloaded++;
+              progressCompletedCount.textContent = totalDownloaded;
+            }
+
+            await new Promise(r => setTimeout(r, 700));
+          }
+        } else {
+          progressTotalInBatch.textContent = '0 en este día';
+        }
+      }
+
+      if (state.cancelBulkDownload) {
+        progressDrawerTitle.textContent = 'Descarga de Ventas Detenida';
+        if (progressSpinner) progressSpinner.style.display = 'none';
+        progressCurrentFile.textContent = `Proceso detenido por el usuario. Total guardado: ${totalDownloaded} comprobantes.`;
+        if (btnCancelDownloadProcess) btnCancelDownloadProcess.style.display = 'none';
+        if (btnGoToAtsAfterDownload) btnGoToAtsAfterDownload.style.display = 'inline-flex';
+        showBanner(`Descarga de ventas detenida: ${totalDownloaded} comprobantes guardados.`, 'warning', 800);
+        dismissProgressDrawer(800);
+      } else {
+        progressBarFill.style.width = '100%';
+        progressPercentBadge.textContent = '100%';
+        progressDrawerTitle.textContent = 'Descarga de Ventas Finalizada';
+        if (progressSpinner) progressSpinner.style.display = 'none';
+        progressCurrentFile.textContent = `Mes completado: ${totalDownloaded} ventas guardadas en su carpeta.`;
+        if (btnCancelDownloadProcess) btnCancelDownloadProcess.style.display = 'none';
+        if (btnGoToAtsAfterDownload) btnGoToAtsAfterDownload.style.display = 'inline-flex';
+        showBanner(`Descarga de ventas completada: ${totalDownloaded} facturas organizadas.`, 'success', 800);
+        dismissProgressDrawer(500);
+      }
+
+      // Sincronizar ATS automáticamente
+      if (state.activeClient && atsModuleView) {
+        try {
+          await atsModuleView.activate(state.activeClient);
+        } catch (atsErr) {
+          console.warn('Aviso sincronizando ATS post-descarga:', atsErr);
+        }
+      }
+
+      // Sincronizar Declaración de IVA automáticamente
+      if (state.activeClient && ivaModuleView) {
+        try {
+          await ivaModuleView.loadPeriodData();
+        } catch (ivaErr) {
+          console.warn('Aviso sincronizando IVA post-descarga:', ivaErr);
+        }
+      }
+    } catch (err) {
+      console.error('Error durante la iteración de ventas:', err);
+      if (progressSpinner) progressSpinner.style.display = 'none';
+      progressCurrentFile.textContent = 'Error: ' + err.message;
+      showBanner('Error en descarga de ventas: ' + err.message, 'warning', 1000);
       dismissProgressDrawer(1000);
     } finally {
       state.isBulkDownloading = false;

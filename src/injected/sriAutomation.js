@@ -171,6 +171,38 @@ function getPasswordCaptureScript() {
   return '(' + fn.toString() + ')();';
 }
 
+// Helper inyectable para localizar el botón/enlace de descarga XML en una fila de comprobantes
+// Soporta selectores directos, búsqueda por cabecera de columna XML y fallback a última celda
+const findXmlElInRow = function(targetRow, tbl) {
+  if (!targetRow) return null;
+  const direct = targetRow.querySelector('[title*="XML" i], [aria-label*="XML" i], [alt*="XML" i], [id*="xml" i], [id*="Xml" i], a[href*=".xml" i], a[href*="xml" i], [class*="xml" i], img[src*="xml" i], [onclick*="xml" i], [onclick*="Xml" i], [onclick*="descargar" i]');
+  if (direct) return direct;
+
+  const tableEl = tbl || targetRow.closest('table, p-table, .ui-table, .ui-datatable');
+  if (tableEl) {
+    const ths = Array.from(tableEl.querySelectorAll('thead th, .ui-datatable-header th, tr th'));
+    let xmlColIndex = -1;
+    ths.forEach((th, i) => {
+      const txt = (th.innerText || th.textContent || '').trim().toLowerCase();
+      if (txt === 'xml' || txt.includes('xml')) xmlColIndex = i;
+    });
+    const tds = targetRow.querySelectorAll('td');
+    if (xmlColIndex >= 0 && tds.length > xmlColIndex) {
+      const cell = tds[xmlColIndex];
+      const el = cell.querySelector('a, button, input[type="image"], img, span') || cell;
+      if (el) return el;
+    }
+  }
+
+  const tds = targetRow.querySelectorAll('td');
+  if (tds.length >= 8) {
+    const lastCell = tds[tds.length - 1];
+    const el = lastCell.querySelector('a, button, input[type="image"], img, span') || lastCell;
+    if (el) return el;
+  }
+  return null;
+};
+
 // Script para analizar la página actual de comprobantes (detecta tabla, categoría y número de filas)
 function getInspectComprobantesScript() {
   const fn = function() {
@@ -206,41 +238,114 @@ function getInspectComprobantesScript() {
       totalRecordsText = paginator.innerText.replace(/\s+/g, ' ').trim();
     }
 
+    // Detección precisa de categoría Ventas vs Compras
+    const url = window.location.href.toLowerCase();
+    const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, .ui-panel-title, .titulo, .header, legend, div'));
+    let isEmitidos = url.includes('emitid') || Boolean(document.querySelector('form[action*="emitid"], [id*="emitid"]'));
+    let isRecibidos = url.includes('recibid') || Boolean(document.querySelector('form[action*="recibid"], [id*="recibid"]'));
+
+    if (!isEmitidos && !isRecibidos) {
+      for (const h of headings) {
+        const txt = (h.innerText || '').toLowerCase();
+        if (txt.includes('comprobantes emitidos') || txt.includes('emitidos autorizados')) {
+          isEmitidos = true;
+          break;
+        }
+        if (txt.includes('comprobantes recibidos') || txt.includes('recibidos autorizados')) {
+          isRecibidos = true;
+          break;
+        }
+      }
+    }
+
+    let category = 'Compras';
+    if (isEmitidos && !isRecibidos) {
+      category = 'Ventas';
+    } else if (isRecibidos && !isEmitidos) {
+      category = 'Compras';
+    } else if (isEmitidos) {
+      category = 'Ventas';
+    }
+
     const monthNames = {
       '01': '01 - Enero', '02': '02 - Febrero', '03': '03 - Marzo', '04': '04 - Abril',
       '05': '05 - Mayo', '06': '06 - Junio', '07': '07 - Julio', '08': '08 - Agosto',
       '09': '09 - Septiembre', '10': '10 - Octubre', '11': '11 - Noviembre', '12': '12 - Diciembre'
     };
 
+    const findXmlEl = function(targetRow, tbl) {
+      if (!targetRow) return null;
+      const direct = targetRow.querySelector('[title*="XML" i], [aria-label*="XML" i], [alt*="XML" i], [id*="xml" i], [id*="Xml" i], a[href*=".xml" i], a[href*="xml" i], [class*="xml" i], img[src*="xml" i], [onclick*="xml" i], [onclick*="Xml" i], [onclick*="descargar" i]');
+      if (direct) return direct;
+
+      const tableEl = tbl || targetRow.closest('table, p-table, .ui-table, .ui-datatable');
+      if (tableEl) {
+        const ths = Array.from(tableEl.querySelectorAll('thead th, .ui-datatable-header th, tr th'));
+        let xmlColIndex = -1;
+        ths.forEach((th, i) => {
+          const txt = (th.innerText || th.textContent || '').trim().toLowerCase();
+          if (txt === 'xml' || txt.includes('xml')) xmlColIndex = i;
+        });
+        const tds = targetRow.querySelectorAll('td');
+        if (xmlColIndex >= 0 && tds.length > xmlColIndex) {
+          const cell = tds[xmlColIndex];
+          const el = cell.querySelector('a, button, input[type="image"], img, span') || cell;
+          if (el) return el;
+        }
+      }
+
+      const tds = targetRow.querySelectorAll('td');
+      if (tds.length >= 8) {
+        const lastCell = tds[tds.length - 1];
+        const el = lastCell.querySelector('a, button, input[type="image"], img, span') || lastCell;
+        if (el) return el;
+      }
+      return null;
+    };
+
     let xmlCount = 0;
     const rowDetails = rows.map((row, idx) => {
       const cells = row.querySelectorAll('td');
 
-      // Extraer Razón Social (Columna 2)
-      let razonSocial = 'Proveedor';
-      if (cells.length > 1) {
-        const cellText = cells[1].innerText.trim();
-        const lines = cellText.split('\n').map(l => l.trim()).filter(Boolean);
-        if (lines.length >= 2) {
-          razonSocial = lines.slice(1).join(' ');
-        } else if (lines.length === 1) {
-          const match = lines[0].match(/^\d{13}\s+(.*)$/);
-          razonSocial = match ? match[1] : lines[0];
-        }
-      }
-
-      // Extraer Tipo y Serie/Secuencial (Columna 3, ej: "Factura 006-001-000053319")
+      let razonSocial = category === 'Ventas' ? 'Venta' : 'Proveedor';
       let tipoSerie = '';
       let tipoComp = 'Factura';
       let numComp = '';
-      if (cells.length > 2) {
-        tipoSerie = cells[2].innerText.trim();
-        const parts = tipoSerie.split(/\s+/);
-        if (parts.length > 1) {
-          tipoComp = parts[0];
-          numComp = parts.slice(1).join(' ');
-        } else {
-          tipoComp = tipoSerie;
+
+      if (category === 'Ventas') {
+        // En Emitidos: cells[1] = "Factura 001-002-000000008"
+        if (cells.length > 1) {
+          tipoSerie = cells[1].innerText.trim();
+          const parts = tipoSerie.split(/\s+/);
+          if (parts.length > 1) {
+            tipoComp = parts[0];
+            numComp = parts.slice(1).join(' ');
+          } else {
+            tipoComp = tipoSerie;
+          }
+        }
+      } else {
+        // En Recibidos: cells[1] = RUC + Razón Social del Proveedor
+        if (cells.length > 1) {
+          const cellText = cells[1].innerText.trim();
+          const lines = cellText.split('\n').map(l => l.trim()).filter(Boolean);
+          if (lines.length >= 2) {
+            razonSocial = lines.slice(1).join(' ');
+          } else if (lines.length === 1) {
+            const match = lines[0].match(/^\d{13}\s+(.*)$/);
+            razonSocial = match ? match[1] : lines[0];
+          }
+        }
+        // cells[2] = "Factura 006-001-000053319"
+        if (cells.length > 2) {
+          tipoSerie = cells[2].innerText.trim();
+          const parts = tipoSerie.split(/\s+/);
+          if (parts.length > 1) {
+            tipoComp = parts[0];
+            numComp = parts.slice(1).join(' ');
+          } else {
+            tipoComp = tipoSerie;
+          }
         }
       }
 
@@ -271,13 +376,19 @@ function getInspectComprobantesScript() {
 
       const cleanRazon = razonSocial.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim().substring(0, 60);
       const cleanSerie = tipoSerie.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim();
-      let filename = `${formattedDate} - ${cleanRazon}`;
-      if (cleanSerie) {
-        filename += ` - ${cleanSerie}`;
+      
+      let filename = '';
+      if (category === 'Ventas') {
+        filename = `${formattedDate} - ${cleanSerie || 'Factura'}.xml`;
+      } else {
+        filename = `${formattedDate} - ${cleanRazon}`;
+        if (cleanSerie) {
+          filename += ` - ${cleanSerie}`;
+        }
+        filename += '.xml';
       }
-      filename += '.xml';
 
-      const xmlBtn = row.querySelector('[title*="XML" i], [aria-label*="XML" i], a[href*=".xml" i], [class*="xml" i], img[src*="xml" i], a[href*="xml" i]');
+      const xmlBtn = findXmlEl(row, mainTable);
       if (xmlBtn) xmlCount++;
 
       return {
@@ -294,15 +405,6 @@ function getInspectComprobantesScript() {
         hasXml: Boolean(xmlBtn)
       };
     });
-
-    const url = window.location.href.toLowerCase();
-    const bodySnippet = document.body ? document.body.innerText.substring(0, 1200).toLowerCase() : '';
-    let category = 'Ventas';
-    if (url.includes('recibido') || bodySnippet.includes('recibido') || bodySnippet.includes('compras')) {
-      category = 'Compras';
-    } else if (url.includes('emitido') || bodySnippet.includes('emitido') || bodySnippet.includes('ventas')) {
-      category = 'Ventas';
-    }
 
     return {
       hasTable: Boolean(mainTable),
@@ -324,12 +426,14 @@ function getInspectComprobantesScript() {
 function getClickRowXmlScript(rowIndex) {
   const fn = function(idx) {
     const tables = Array.from(document.querySelectorAll('p-table, table.ui-table, .ui-datatable-tablewrapper table, table'));
+    let mainTable = null;
     let rows = [];
 
     for (const t of tables) {
       const foundRows = Array.from(t.querySelectorAll('tbody tr'));
       const validRows = foundRows.filter(r => !r.innerText.includes('No se encontraron') && r.querySelectorAll('td').length > 3);
       if (validRows.length > 0) {
+        mainTable = t;
         rows = validRows;
         break;
       }
@@ -342,30 +446,56 @@ function getClickRowXmlScript(rowIndex) {
     const row = rows[idx];
     const cells = row.querySelectorAll('td');
 
-    // 1. Extraer Razón Social (Columna 2 / cells[1])
-    let razonSocial = 'Proveedor';
-    if (cells.length > 1) {
-      const cellText = cells[1].innerText.trim();
-      const lines = cellText.split('\n').map(l => l.trim()).filter(Boolean);
-      if (lines.length >= 2) {
-        razonSocial = lines.slice(1).join(' ');
-      } else if (lines.length === 1) {
-        const match = lines[0].match(/^\d{13}\s+(.*)$/);
-        razonSocial = match ? match[1] : lines[0];
+    // Detección de categoría Ventas vs Compras
+    const url = window.location.href.toLowerCase();
+    const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, .ui-panel-title, .titulo, .header, legend, div'));
+    let isEmitidos = url.includes('emitid') || Boolean(document.querySelector('form[action*="emitid"], [id*="emitid"]'));
+    let isRecibidos = url.includes('recibid') || Boolean(document.querySelector('form[action*="recibid"], [id*="recibid"]'));
+
+    if (!isEmitidos && !isRecibidos) {
+      for (const h of headings) {
+        const txt = (h.innerText || '').toLowerCase();
+        if (txt.includes('comprobantes emitidos') || txt.includes('emitidos autorizados')) {
+          isEmitidos = true;
+          break;
+        }
+        if (txt.includes('comprobantes recibidos') || txt.includes('recibidos autorizados')) {
+          isRecibidos = true;
+          break;
+        }
       }
     }
 
-    // 2. Extraer Tipo y Serie (Columna 3 / cells[2], ej: "Factura 001-003-000003838")
+    const isVentas = Boolean(isEmitidos && !isRecibidos) || isEmitidos;
+
+    let razonSocial = isVentas ? 'Venta' : 'Proveedor';
     let tipoSerie = '';
-    if (cells.length > 2) {
-      tipoSerie = cells[2].innerText.trim();
+
+    if (isVentas) {
+      if (cells.length > 1) {
+        tipoSerie = cells[1].innerText.trim();
+      }
+    } else {
+      if (cells.length > 1) {
+        const cellText = cells[1].innerText.trim();
+        const lines = cellText.split('\n').map(l => l.trim()).filter(Boolean);
+        if (lines.length >= 2) {
+          razonSocial = lines.slice(1).join(' ');
+        } else if (lines.length === 1) {
+          const match = lines[0].match(/^\d{13}\s+(.*)$/);
+          razonSocial = match ? match[1] : lines[0];
+        }
+      }
+      if (cells.length > 2) {
+        tipoSerie = cells[2].innerText.trim();
+      }
     }
 
-    // 3. Extraer Clave de Acceso de 49 dígitos
+    // Extraer Clave de Acceso de 49 dígitos
     const claveMatch = row.innerText.match(/\b\d{49}\b/);
     const clave = claveMatch ? claveMatch[0] : null;
 
-    // 4. Extraer Fecha (desde la clave ddmmaaaa o desde el texto de la fila)
+    // Extraer Fecha
     let formattedDate = 'Fecha';
     let year = String(new Date().getFullYear());
     let monthFolder = 'Mes';
@@ -392,24 +522,67 @@ function getClickRowXmlScript(rowIndex) {
       }
     }
 
-    // 5. Construir nombre descriptivo: [Fecha] - [Razón Social] - [Serie].xml
+    // Construir nombre descriptivo
     const cleanRazon = razonSocial.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim().substring(0, 60);
     const cleanSerie = tipoSerie.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim();
     
-    let suggestedFilename = `${formattedDate} - ${cleanRazon}`;
-    if (cleanSerie) {
-      suggestedFilename += ` - ${cleanSerie}`;
+    let suggestedFilename = '';
+    if (isVentas) {
+      suggestedFilename = `${formattedDate} - ${cleanSerie || 'Factura'}.xml`;
+    } else {
+      suggestedFilename = `${formattedDate} - ${cleanRazon}`;
+      if (cleanSerie) {
+        suggestedFilename += ` - ${cleanSerie}`;
+      }
+      suggestedFilename += '.xml';
     }
-    suggestedFilename += '.xml';
 
-    // 6. Encontrar botón o enlace XML
-    const xmlEl = row.querySelector('[title*="XML" i], [aria-label*="XML" i], a[href*=".xml" i], [class*="xml" i], img[src*="xml" i], a[href*="xml" i]');
+    // Encontrar botón o enlace XML mediante estrategia integral
+    const findXmlEl = function(targetRow, tbl) {
+      if (!targetRow) return null;
+      const direct = targetRow.querySelector('[title*="XML" i], [aria-label*="XML" i], [alt*="XML" i], [id*="xml" i], [id*="Xml" i], a[href*=".xml" i], a[href*="xml" i], [class*="xml" i], img[src*="xml" i], [onclick*="xml" i], [onclick*="Xml" i], [onclick*="descargar" i]');
+      if (direct) return direct;
+
+      const tableEl = tbl || targetRow.closest('table, p-table, .ui-table, .ui-datatable');
+      if (tableEl) {
+        const ths = Array.from(tableEl.querySelectorAll('thead th, .ui-datatable-header th, tr th'));
+        let xmlColIndex = -1;
+        ths.forEach((th, i) => {
+          const txt = (th.innerText || th.textContent || '').trim().toLowerCase();
+          if (txt === 'xml' || txt.includes('xml')) xmlColIndex = i;
+        });
+        const tds = targetRow.querySelectorAll('td');
+        if (xmlColIndex >= 0 && tds.length > xmlColIndex) {
+          const cell = tds[xmlColIndex];
+          const el = cell.querySelector('a, button, input[type="image"], img, span') || cell;
+          if (el) return el;
+        }
+      }
+
+      const tds = targetRow.querySelectorAll('td');
+      if (tds.length >= 8) {
+        const lastCell = tds[tds.length - 1];
+        const el = lastCell.querySelector('a, button, input[type="image"], img, span') || lastCell;
+        if (el) return el;
+      }
+      return null;
+    };
+
+    const xmlEl = findXmlEl(row, mainTable);
     if (!xmlEl) {
       return { success: false, reason: 'Botón XML no encontrado en la fila ' + (idx + 1), clave: clave };
     }
 
-    const clickable = xmlEl.closest('a, button, span') || xmlEl;
-    clickable.click();
+    const clickable = xmlEl.closest('a, button, input, span') || xmlEl;
+    try {
+      clickable.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
+      clickable.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
+      clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+    } catch (e) {}
+
+    if (typeof clickable.click === 'function') {
+      clickable.click();
+    }
 
     return {
       success: true,
@@ -1608,6 +1781,118 @@ function getNavigateToSriSectionScript(target = 'compras') {
   return '(' + fn.toString() + ')(' + JSON.stringify(target) + ');';
 }
 
+// Script para obtener información y estado del formulario de comprobantes emitidos (Ventas)
+function getVentasFilterInfoScript() {
+  const fn = function() {
+    const url = window.location.href.toLowerCase();
+    const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, .ui-panel-title, .titulo, .header, legend, div'));
+    let isVentas = url.includes('emitid') || Boolean(document.querySelector('form[action*="emitid"], [id*="emitid"]'));
+    if (!isVentas) {
+      for (const h of headings) {
+        const txt = (h.innerText || '').toLowerCase();
+        if (txt.includes('comprobantes emitidos') || txt.includes('emitidos autorizados')) {
+          isVentas = true;
+          break;
+        }
+      }
+    }
+
+    const dateInput = document.querySelector('input[id*="fechaEmision" i], input[id*="fecha" i], input.hasDatepicker, input[name*="fecha" i]');
+    const rawVal = dateInput ? (dateInput.value || '').trim() : '';
+
+    let day = null;
+    let month = null;
+    let year = null;
+    let daysInMonth = 31;
+
+    const m = rawVal.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+    if (m) {
+      day = parseInt(m[1], 10);
+      month = parseInt(m[2], 10);
+      year = parseInt(m[3], 10);
+      daysInMonth = new Date(year, month, 0).getDate();
+    } else {
+      const now = new Date();
+      day = now.getDate();
+      month = now.getMonth() + 1;
+      year = now.getFullYear();
+      daysInMonth = new Date(year, month, 0).getDate();
+    }
+
+    const monthNames = {
+      1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+      5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+      9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+    };
+
+    const buttons = Array.from(document.querySelectorAll('button, input[type="submit"], input[type="button"], a.ui-button'));
+    const hasConsultarBtn = buttons.some(b => {
+      const txt = (b.innerText || b.value || '').toLowerCase().trim();
+      return txt === 'consultar' || txt.includes('consultar');
+    });
+
+    return {
+      isVentasPage: Boolean(isVentas),
+      hasDateInput: Boolean(dateInput),
+      currentDate: rawVal || `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`,
+      day: day,
+      month: month,
+      year: year,
+      monthName: monthNames[month] || `Mes ${month}`,
+      daysInMonth: daysInMonth,
+      hasConsultarBtn: hasConsultarBtn
+    };
+  };
+
+  return '(' + fn.toString() + ')();';
+}
+
+// Script para cambiar la fecha de emisión en Ventas y presionar Consultar
+function getSetVentasDateAndSearchScript(dateStr) {
+  const fn = function(targetDate) {
+    const dateInput = document.querySelector('input[id*="fechaEmision" i], input[id*="fecha" i], input.hasDatepicker, input[name*="fecha" i]');
+    if (!dateInput) {
+      return { success: false, reason: 'Campo de fecha de emisión no encontrado en el formulario.' };
+    }
+
+    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    if (nativeSetter) {
+      nativeSetter.call(dateInput, targetDate);
+    } else {
+      dateInput.value = targetDate;
+    }
+    dateInput.value = targetDate;
+
+    dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+    dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+    dateInput.dispatchEvent(new Event('blur', { bubbles: true }));
+
+    const buttons = Array.from(document.querySelectorAll('button, input[type="submit"], input[type="button"], a.ui-button'));
+    const consultBtn = buttons.find(b => {
+      const txt = (b.innerText || b.value || '').toLowerCase().trim();
+      return txt === 'consultar' || txt.includes('consultar');
+    });
+
+    if (!consultBtn) {
+      return { success: false, reason: 'Botón Consultar no encontrado en el formulario.' };
+    }
+
+    try {
+      consultBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
+      consultBtn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
+      consultBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+    } catch (e) {}
+
+    if (typeof consultBtn.click === 'function') {
+      consultBtn.click();
+    }
+
+    return { success: true, date: targetDate };
+  };
+
+  return '(' + fn.toString() + ')(' + JSON.stringify(dateStr) + ');';
+}
+
 module.exports = {
   getLoginScript,
   getPasswordCaptureScript,
@@ -1621,5 +1906,7 @@ module.exports = {
   getInspectDeclaracionPageScript,
   getFillDeclaracionProfilingScript,
   getFillDeclaracionCasillerosScript,
-  getNavigateToSriSectionScript
+  getNavigateToSriSectionScript,
+  getVentasFilterInfoScript,
+  getSetVentasDateAndSearchScript
 };

@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld('tribuApi', {
   getFillProfilingScript: (respuestas) => ipcRenderer.invoke('sri:get-fill-profiling-script', respuestas),
   getFillCasillerosScript: (casilleros) => ipcRenderer.invoke('sri:get-fill-casilleros-script', casilleros),
   getNavigateSriScript: (target) => ipcRenderer.invoke('sri:get-navigate-script', target),
+  getVentasFilterInfoScript: () => ipcRenderer.invoke('sri:get-ventas-filter-info-script'),
+  getSetVentasDateAndSearchScript: (dateStr) => ipcRenderer.invoke('sri:get-set-ventas-date-script', dateStr),
   dumpDebug: (data) => ipcRenderer.invoke('sri:dump-debug', data),
 
   // =============================================================

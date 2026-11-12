@@ -98,11 +98,17 @@ class DownloadManager {
     this.registeredSessions.add(targetSession);
 
     targetSession.on('will-download', (event, item, webContents) => {
-      const originalName = item.getFilename();
+      const originalName = item.getFilename() || '';
       const ext = path.extname(originalName).toLowerCase();
+      const mime = (item.getMimeType() || '').toLowerCase();
       
-      // SOLO DESCARGAR ARCHIVOS XML
-      if (ext !== '.xml') {
+      // SOLO DESCARGAR ARCHIVOS XML (validación por extensión, MIME o contexto de comprobante esperado)
+      const isXmlExtension = ext === '.xml';
+      const isXmlMime = mime.includes('xml') || mime.includes('octet-stream');
+      const isExpected = Boolean(this.expectedInfo);
+      const isAcceptableXml = isXmlExtension || isXmlMime || isExpected || originalName.toLowerCase().includes('.xml');
+
+      if (!isAcceptableXml) {
         item.cancel();
         return;
       }
@@ -111,15 +117,21 @@ class DownloadManager {
       let year = null;
       let month = null;
 
-      // 1. Usar el nombre descriptivo con [Fecha] - [Razón Social] si está disponible
+      // 1. Usar el nombre descriptivo con [Fecha] - [Razón Social/Serie] si está disponible
       if (this.expectedInfo) {
         if (this.expectedInfo.filename) {
           saveName = this.expectedInfo.filename;
-        } else if (this.expectedInfo.fechaEmision && this.expectedInfo.razonSocial) {
-          const cleanRazon = this._cleanFilename(this.expectedInfo.razonSocial).substring(0, 60);
+        } else if (this.expectedInfo.fechaEmision) {
           const cleanSerie = this._cleanFilename(this.expectedInfo.numeroComprobante || this.expectedInfo.tipoSerie || '');
-          saveName = `${this.expectedInfo.fechaEmision} - ${cleanRazon}`;
-          if (cleanSerie) saveName += ` - ${cleanSerie}`;
+          const cleanRazon = this.expectedInfo.razonSocial ? this._cleanFilename(this.expectedInfo.razonSocial).substring(0, 60) : '';
+          if (cleanRazon && cleanRazon !== 'Venta' && cleanRazon !== 'Proveedor') {
+            saveName = `${this.expectedInfo.fechaEmision} - ${cleanRazon}`;
+            if (cleanSerie) saveName += ` - ${cleanSerie}`;
+          } else if (cleanSerie) {
+            saveName = `${this.expectedInfo.fechaEmision} - ${cleanSerie}`;
+          } else {
+            saveName = `${this.expectedInfo.fechaEmision} - Comprobante`;
+          }
           saveName += '.xml';
         }
         
