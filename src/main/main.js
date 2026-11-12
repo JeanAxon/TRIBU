@@ -172,6 +172,10 @@ function setupIpcHandlers() {
     return getAutomationModule().getFillDeclaracionCasillerosScript(casilleros);
   });
 
+  ipcMain.handle('sri:get-navigate-script', async (event, target) => {
+    return getAutomationModule().getNavigateToSriSectionScript(target);
+  });
+
   ipcMain.handle('sri:dump-debug', async (event, data) => {
     try {
       const p = path.join(process.cwd(), 'live_debug_sri.json');

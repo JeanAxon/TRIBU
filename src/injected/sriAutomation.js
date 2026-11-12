@@ -1528,6 +1528,86 @@ function getFillDeclaracionCasillerosScript(casilleros = {}) {
   return '(' + fn.toString() + ')(' + JSON.stringify(payload) + ');';
 }
 
+// Script para navegar de forma segura y autenticada entre secciones del SRI
+function getNavigateToSriSectionScript(target = 'compras') {
+  const fn = function(section) {
+    const targets = {
+      compras: {
+        url: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=57&idGrupo=55',
+        selector: 'a[href*="redireccion=57"]',
+        headerText: 'FACTURACIÓN ELECTRÓNICA'
+      },
+      ventas: {
+        url: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=60&idGrupo=58',
+        selector: 'a[href*="redireccion=60"]',
+        headerText: 'FACTURACIÓN ELECTRÓNICA',
+        subText: 'Producción'
+      },
+      declaracion: {
+        url: 'https://srienlinea.sri.gob.ec/sri-declaraciones-web-internet/pages/recepcion/recibirDeclaracion.jsf?identificadorGrupoObligacion=IVA',
+        selector: 'a[href*="recibirDeclaracion.jsf"], a[href*="declaracion"]',
+        headerText: 'DECLARACIONES'
+      }
+    };
+
+    const cfg = targets[section] || targets.compras;
+
+    try {
+      // 1. Si estamos en el portal Angular (sri-en-linea)
+      const isAngular = window.location.href.includes('/sri-en-linea');
+      if (isAngular) {
+        // A) Buscar si el enlace directo ya esta visible en el DOM
+        let link = document.querySelector(cfg.selector);
+        if (link) {
+          link.click();
+          return { success: true, method: 'dom_direct_click', section };
+        }
+
+        // B) Si el menu lateral esta contraido, abrirlo con el boton de hamburguesa
+        const menuContraido = document.getElementById('sri-menu-contraido');
+        if (menuContraido && menuContraido.offsetParent !== null) {
+          const btnMenu = document.getElementById('sri-menu-desplegado-btn');
+          if (btnMenu) btnMenu.click();
+        }
+
+        // C) Desplegar encabezado del grupo (ej. FACTURACION ELECTRONICA)
+        if (cfg.headerText) {
+          const headers = Array.from(document.querySelectorAll('a.ui-panelmenu-header-link, .ui-panelmenu-header a, .ui-panelmenu-header'));
+          const targetHeader = headers.find(h => (h.innerText || '').toUpperCase().includes(cfg.headerText.toUpperCase()));
+          if (targetHeader) {
+            targetHeader.click();
+          }
+        }
+
+        // D) Si requiere subgrupo (ej. Produccion para ventas)
+        if (cfg.subText) {
+          const menuLinks = Array.from(document.querySelectorAll('.ui-menuitem-link, a'));
+          const subLink = menuLinks.find(el => (el.innerText || '').trim().toLowerCase() === cfg.subText.toLowerCase());
+          if (subLink) {
+            subLink.click();
+          }
+        }
+
+        // E) Reintentar clic en el enlace tras abrir el arbol
+        link = document.querySelector(cfg.selector);
+        if (link) {
+          link.click();
+          return { success: true, method: 'dom_expanded_click', section };
+        }
+      }
+
+      // 2. Si no es Angular o no se encontro el elemento, navegar mediante SSO router en ventana autenticada
+      window.location.href = cfg.url;
+      return { success: true, method: 'window_location', url: cfg.url };
+    } catch (e) {
+      window.location.href = cfg.url;
+      return { success: true, method: 'fallback_location', error: e.message };
+    }
+  };
+
+  return '(' + fn.toString() + ')(' + JSON.stringify(target) + ');';
+}
+
 module.exports = {
   getLoginScript,
   getPasswordCaptureScript,
@@ -1540,5 +1620,6 @@ module.exports = {
   getProcessReclamoRowScript,
   getInspectDeclaracionPageScript,
   getFillDeclaracionProfilingScript,
-  getFillDeclaracionCasillerosScript
+  getFillDeclaracionCasillerosScript,
+  getNavigateToSriSectionScript
 };

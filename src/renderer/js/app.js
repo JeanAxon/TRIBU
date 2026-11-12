@@ -2044,20 +2044,45 @@ document.addEventListener('DOMContentLoaded', async () => {
   const ivaModuleView = window.IvaModuleView ? new window.IvaModuleView() : null;
 
   window.tribuNavDelegate = {
-    goToSriUrl: (url) => {
+    goToSriUrl: async (target) => {
       switchMainSection('sri');
-      if (currentWebview) {
-        let label = 'el portal del SRI';
-        if (url.includes('comprobantesEmitidos')) {
-          label = 'Comprobantes Emitidos (Ventas)';
-        } else if (url.includes('comprobantesRecibidos')) {
-          label = 'Comprobantes Recibidos (Compras)';
-        } else if (url.includes('recibirDeclaracion')) {
-          label = 'Formulario de Declaracion IVA';
-        }
-        showBanner(`Navegando a ${label}...`, 'info', 2500);
-        currentWebview.src = url;
+      if (!currentWebview) return;
+
+      const labels = {
+        compras: 'Comprobantes Recibidos (Compras)',
+        ventas: 'Comprobantes Emitidos (Ventas)',
+        declaracion: 'Formulario de Declaracion IVA'
+      };
+
+      let key = 'compras';
+      const targetStr = String(target || '').toLowerCase();
+      if (targetStr.includes('venta') || targetStr.includes('emitid') || targetStr.includes('redireccion=60')) {
+        key = 'ventas';
+      } else if (targetStr.includes('declaraci') || targetStr.includes('recibirdeclaracion')) {
+        key = 'declaracion';
+      } else {
+        key = 'compras';
       }
+
+      showBanner(`Navegando a ${labels[key]}...`, 'info', 2500);
+
+      try {
+        if (window.tribuApi && typeof window.tribuApi.getNavigateSriScript === 'function') {
+          const navScript = await window.tribuApi.getNavigateSriScript(key);
+          await currentWebview.executeJavaScript(navScript);
+          return;
+        }
+      } catch (err) {
+        console.warn('Aviso en navegacion script SRI, usando fallback directo:', err);
+      }
+
+      // Fallback seguro usando el despachador SSO oficial del SRI
+      const fallbackUrls = {
+        compras: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=57&idGrupo=55',
+        ventas: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=60&idGrupo=58',
+        declaracion: 'https://srienlinea.sri.gob.ec/sri-declaraciones-web-internet/pages/recepcion/recibirDeclaracion.jsf?identificadorGrupoObligacion=IVA'
+      };
+      currentWebview.src = fallbackUrls[key] || fallbackUrls.compras;
     }
   };
 

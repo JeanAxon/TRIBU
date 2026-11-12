@@ -122,22 +122,22 @@ class IvaModuleView {
     // Navegacion contextual al SRI desde el Checklist
     if (this.btnNavSriCompras) {
       this.btnNavSriCompras.addEventListener('click', () => {
-        this._navigateToSriUrl('https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/pages/consultas/recibidos/comprobantesRecibidos.jsf');
+        this._navigateToSriUrl('compras');
       });
     }
     if (this.btnNavSriVentas) {
       this.btnNavSriVentas.addEventListener('click', () => {
-        this._navigateToSriUrl('https://srienlinea.sri.gob.ec/sri-eyr-consulta-web-internet/pages/consultas/comprobantesEmitidos.jsf');
+        this._navigateToSriUrl('ventas');
       });
     }
     if (this.btnNavSriRetRecibidas) {
       this.btnNavSriRetRecibidas.addEventListener('click', () => {
-        this._navigateToSriUrl('https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/pages/consultas/recibidos/comprobantesRecibidos.jsf');
+        this._navigateToSriUrl('compras');
       });
     }
     if (this.btnNavSriRetEmitidas) {
       this.btnNavSriRetEmitidas.addEventListener('click', () => {
-        this._navigateToSriUrl('https://srienlinea.sri.gob.ec/sri-eyr-consulta-web-internet/pages/consultas/comprobantesEmitidos.jsf');
+        this._navigateToSriUrl('ventas');
       });
     }
 
@@ -170,7 +170,7 @@ class IvaModuleView {
     // Abrir Formulario en SRI
     if (this.btnIvaAbrirSri) {
       this.btnIvaAbrirSri.addEventListener('click', () => {
-        this._navigateToSriUrl('https://srienlinea.sri.gob.ec/sri-declaraciones-web-internet/pages/recepcion/recibirDeclaracion.jsf?identificadorGrupoObligacion=IVA');
+        this._navigateToSriUrl('declaracion');
       });
     }
 

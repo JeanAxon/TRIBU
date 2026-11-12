@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('tribuApi', {
   getInspectDeclaracionScript: () => ipcRenderer.invoke('sri:get-inspect-declaracion-script'),
   getFillProfilingScript: (respuestas) => ipcRenderer.invoke('sri:get-fill-profiling-script', respuestas),
   getFillCasillerosScript: (casilleros) => ipcRenderer.invoke('sri:get-fill-casilleros-script', casilleros),
+  getNavigateSriScript: (target) => ipcRenderer.invoke('sri:get-navigate-script', target),
   dumpDebug: (data) => ipcRenderer.invoke('sri:dump-debug', data),
 
   // =============================================================
