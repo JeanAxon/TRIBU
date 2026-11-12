@@ -119,25 +119,25 @@ class IvaModuleView {
       });
     }
 
-    // Navegación contextual al SRI desde el Checklist
+    // Navegacion contextual al SRI desde el Checklist
     if (this.btnNavSriCompras) {
       this.btnNavSriCompras.addEventListener('click', () => {
-        this._navigateToSriUrl('https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/validadorComprobantes.jsf');
+        this._navigateToSriUrl('https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/pages/consultas/recibidos/comprobantesRecibidos.jsf');
       });
     }
     if (this.btnNavSriVentas) {
       this.btnNavSriVentas.addEventListener('click', () => {
-        this._navigateToSriUrl('https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/consultas/consultaComprobantesEmitidos.jsf');
+        this._navigateToSriUrl('https://srienlinea.sri.gob.ec/sri-eyr-consulta-web-internet/pages/consultas/comprobantesEmitidos.jsf');
       });
     }
     if (this.btnNavSriRetRecibidas) {
       this.btnNavSriRetRecibidas.addEventListener('click', () => {
-        this._navigateToSriUrl('https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/validadorComprobantes.jsf');
+        this._navigateToSriUrl('https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/pages/consultas/recibidos/comprobantesRecibidos.jsf');
       });
     }
     if (this.btnNavSriRetEmitidas) {
       this.btnNavSriRetEmitidas.addEventListener('click', () => {
-        this._navigateToSriUrl('https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/consultas/consultaComprobantesEmitidos.jsf');
+        this._navigateToSriUrl('https://srienlinea.sri.gob.ec/sri-eyr-consulta-web-internet/pages/consultas/comprobantesEmitidos.jsf');
       });
     }
 

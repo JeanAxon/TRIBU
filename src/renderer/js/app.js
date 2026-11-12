@@ -1370,7 +1370,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         urlDecoded = decodeURIComponent(urlDecoded);
       } catch (e) {}
 
-      // 0. EXCLUSIONES INMEDIATAS: Páginas como Perfil del contribuyente o Login de Keycloak
+      // 0. EXCLUSIONES INMEDIATAS: Paginas como Perfil del contribuyente o Login de Keycloak
       if (
         urlDecoded.includes('/contribuyente/perfil') ||
         urlDecoded.includes('/sri-en-linea/contribuyente') ||
@@ -1380,49 +1380,72 @@ document.addEventListener('DOMContentLoaded', async () => {
         return false;
       }
 
-      // 1. Detección por URL Principal: Ruta canónica del servlet JSF de comprobantes recibidos
+      // 1. Deteccion por URL Principal: Comprobantes Recibidos o Emitidos
       if (
         urlDecoded.includes('comprobantesrecibidos.jsf') ||
-        urlDecoded.includes('consultas/recibidos')
+        urlDecoded.includes('comprobantesemitidos.jsf') ||
+        urlDecoded.includes('consultas/recibidos') ||
+        urlDecoded.includes('consultas/emitidos') ||
+        urlDecoded.includes('sri-eyr-consulta-web-internet')
       ) {
         return true;
       }
 
-      // Capa 2: Inspección semántica en el DOM del webview (títulos, encabezados, formularios e iframes)
+      // Capa 2: Inspeccion semantica en el DOM del webview (titulos, encabezados, formularios e iframes)
       const domDetected = await currentWebview.executeJavaScript(`
         (function() {
           try {
-            // 1. En el documento principal: Buscar en elementos de CONTENIDO (descartando menús laterales)
+            // 1. En el documento principal: Buscar en elementos de CONTENIDO (descartando menus laterales)
             const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, .ui-panel-title, form:not(#menuForm)'));
             for (const el of headings) {
               if (el.closest('nav, .sidebar, .menu, #menu, .ui-panelmenu, .navbar, .menu-lateral, #sidebar')) {
                 continue;
               }
-              const elText = el.innerText || '';
-              if (elText.includes('Comprobantes electrónicos recibidos') || elText.includes('Comprobantes electronicos recibidos')) {
+              const elText = (el.innerText || '').toLowerCase();
+              if (
+                elText.includes('comprobantes electronicos') ||
+                elText.includes('comprobantes electrónicos') ||
+                elText.includes('comprobantes recibidos') ||
+                elText.includes('comprobantes emitidos')
+              ) {
                 const bodyText = (document.body ? document.body.innerText : '') || '';
-                if (bodyText.includes('Periodo emisión') || bodyText.includes('Periodo emision') || bodyText.includes('Tipo de comprobante') || bodyText.includes('Ruc/Cédula/Pasaporte')) {
+                if (
+                  bodyText.includes('Periodo') ||
+                  bodyText.includes('Periodo emision') ||
+                  bodyText.includes('Periodo emisión') ||
+                  bodyText.includes('Tipo de comprobante') ||
+                  bodyText.includes('Ruc') ||
+                  bodyText.includes('Establecimiento') ||
+                  bodyText.includes('Fecha de emision') ||
+                  bodyText.includes('Fecha de emisión')
+                ) {
                   return true;
                 }
               }
             }
 
             // 2. Verificar formularios o componentes PrimeFaces de la vista de consultas
-            const hasForm = Boolean(document.querySelector('form[action*="comprobantesRecibidos"], form[id*="recibidos"], [id*="comprobantesRecibidos"]'));
+            const hasForm = Boolean(document.querySelector('form[action*="comprobantesRecibidos"], form[action*="comprobantesEmitidos"], form[id*="recibidos"], form[id*="emitidos"], [id*="comprobantesRecibidos"], [id*="comprobantesEmitidos"]'));
             if (hasForm) return true;
 
-            // 3. Verificar si el módulo está incrustado en un iframe dentro del portal
+            // 3. Verificar si el modulo esta incrustado en un iframe dentro del portal
             const frames = Array.from(document.querySelectorAll('iframe'));
             for (const f of frames) {
               try {
                 const src = (f.src || '').toLowerCase();
-                if (src.includes('comprobantesrecibidos.jsf') || src.includes('consultas/recibidos')) return true;
+                if (
+                  src.includes('comprobantesrecibidos.jsf') ||
+                  src.includes('comprobantesemitidos.jsf') ||
+                  src.includes('consultas/recibidos') ||
+                  src.includes('consultas/emitidos') ||
+                  src.includes('sri-eyr-consulta-web-internet')
+                ) return true;
                 const fDoc = f.contentDocument || f.contentWindow.document;
                 if (fDoc && fDoc.body) {
-                  const fText = fDoc.body.innerText || '';
+                  const fText = (fDoc.body.innerText || '').toLowerCase();
                   if (
-                    (fText.includes('Comprobantes electrónicos recibidos') || fText.includes('Comprobantes electronicos recibidos')) &&
-                    (fText.includes('Periodo emisión') || fText.includes('Periodo emision') || fText.includes('Tipo de comprobante'))
+                    (fText.includes('comprobantes electronicos') || fText.includes('comprobantes electrónicos')) &&
+                    (fText.includes('periodo') || fText.includes('tipo de comprobante'))
                   ) {
                     return true;
                   }
@@ -1455,7 +1478,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         urlDecoded.includes('/sri-en-linea/contribuyente') ||
         urlDecoded.includes('/auth/realms/') ||
         urlDecoded.includes('/login') ||
-        urlDecoded.includes('comprobantesrecibidos.jsf')
+        urlDecoded.includes('comprobantesrecibidos.jsf') ||
+        urlDecoded.includes('comprobantesemitidos.jsf')
       ) {
         return false;
       }
@@ -1756,12 +1780,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         dismissProgressDrawer(500);
       }
 
-      // Sincronizar automáticamente el módulo ATS con las nuevas descargas
+      // Sincronizar automaticamente el modulo ATS con las nuevas descargas
       if (state.activeClient && atsModuleView) {
         try {
           await atsModuleView.activate(state.activeClient);
         } catch (atsErr) {
           console.warn('Aviso sincronizando ATS post-descarga:', atsErr);
+        }
+      }
+
+      // Sincronizar automaticamente el modulo Declaracion IVA con las nuevas descargas
+      if (state.activeClient && ivaModuleView) {
+        try {
+          await ivaModuleView.loadPeriodData();
+        } catch (ivaErr) {
+          console.warn('Aviso sincronizando IVA post-descarga:', ivaErr);
         }
       }
     } catch (err) {
@@ -2014,6 +2047,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     goToSriUrl: (url) => {
       switchMainSection('sri');
       if (currentWebview) {
+        let label = 'el portal del SRI';
+        if (url.includes('comprobantesEmitidos')) {
+          label = 'Comprobantes Emitidos (Ventas)';
+        } else if (url.includes('comprobantesRecibidos')) {
+          label = 'Comprobantes Recibidos (Compras)';
+        } else if (url.includes('recibirDeclaracion')) {
+          label = 'Formulario de Declaracion IVA';
+        }
+        showBanner(`Navegando a ${label}...`, 'info', 2500);
         currentWebview.src = url;
       }
     }
