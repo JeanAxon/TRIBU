@@ -19,6 +19,7 @@ const securityModule = require('../modules/security');
 const DownloadManager = require('./downloadManager');
 const sriAutomation = require('../injected/sriAutomation');
 const atsModule = require('../modules/ats');
+const declaracionesModule = require('../modules/declaraciones');
 
 let mainWindow = null;
 let downloadManager = null;
@@ -58,6 +59,7 @@ function setupIpcHandlers() {
   // =============================================================
   securityModule.registerIpc(ipcMain);
   atsModule.registerIpc(ipcMain);
+  declaracionesModule.registerIpc(ipcMain);
 
   // Diálogo para seleccionar carpeta
   ipcMain.handle('dialog:select-folder', async (event, defaultPath) => {
@@ -156,6 +158,18 @@ function setupIpcHandlers() {
 
   ipcMain.handle('sri:get-process-reclamo-row-script', async (event, rowIndex) => {
     return getAutomationModule().getProcessReclamoRowScript(rowIndex);
+  });
+
+  ipcMain.handle('sri:get-inspect-declaracion-script', async () => {
+    return getAutomationModule().getInspectDeclaracionPageScript();
+  });
+
+  ipcMain.handle('sri:get-fill-profiling-script', async (event, respuestas) => {
+    return getAutomationModule().getFillDeclaracionProfilingScript(respuestas);
+  });
+
+  ipcMain.handle('sri:get-fill-casilleros-script', async (event, casilleros) => {
+    return getAutomationModule().getFillDeclaracionCasillerosScript(casilleros);
   });
 
   ipcMain.handle('sri:dump-debug', async (event, data) => {

@@ -197,20 +197,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     cancelBulkDownload: false,
     isProcessingReclamo: false,
     cancelReclamo: false,
-    activeSection: 'clientes' // 'clientes' | 'sri' | 'ats'
+    activeSection: 'clientes' // 'clientes' | 'sri' | 'ats' | 'iva'
   };
 
   // Referencias a vistas principales
   const views = {
     clientes: document.getElementById('viewClientes'),
     sri: document.getElementById('viewSri'),
-    ats: document.getElementById('viewAts')
+    ats: document.getElementById('viewAts'),
+    iva: document.getElementById('viewIva')
   };
 
   // Secciones de Navegación del Encabezado
   const navSectionClientes = document.getElementById('navSectionClientes');
   const navSectionSri = document.getElementById('navSectionSri');
   const navSectionAts = document.getElementById('navSectionAts');
+  const navSectionIva = document.getElementById('navSectionIva');
 
   // Datos del Cliente en el Encabezado y Selector Desplegable Rápido
   const headerUserWrapper = document.getElementById('headerUserWrapper');
@@ -226,6 +228,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Acciones Contextuales del SRI en el Encabezado
   const btnTriggerBulkDownload = document.getElementById('btnTriggerBulkDownload');
   const btnDiscapacidadIva = document.getElementById('btnDiscapacidadIva');
+  const btnAutoLlenarDeclaracion = document.getElementById('btnAutoLlenarDeclaracion');
 
   // Elementos de la Página de Clientes
   const clientsGrid = document.getElementById('clientsGrid');
@@ -381,12 +384,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // -------------------------------------------------------------
-  // 1. NAVEGACIÓN PRINCIPAL ENTRE SECCIONES (Clientes, SRI, ATS)
+  // 1. NAVEGACIÓN PRINCIPAL ENTRE SECCIONES (Clientes, SRI, ATS, IVA)
   // -------------------------------------------------------------
   function switchMainSection(sectionName) {
-    if (sectionName === 'sri' || sectionName === 'ats') {
+    if (sectionName === 'sri' || sectionName === 'ats' || sectionName === 'iva') {
       if (!state.activeClient) {
-        showBanner('Por favor selecciona un cliente de la lista para ingresar al ' + (sectionName === 'sri' ? 'SRI' : 'ATS') + '.', 'warning', 4000);
+        const dest = sectionName === 'sri' ? 'SRI' : (sectionName === 'ats' ? 'ATS' : 'Declaración IVA');
+        showBanner('Por favor selecciona un cliente de la lista para ingresar a ' + dest + '.', 'warning', 4000);
         switchMainSection('clientes');
         return;
       }
@@ -398,15 +402,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     navSectionClientes.classList.toggle('active', sectionName === 'clientes');
     navSectionSri.classList.toggle('active', sectionName === 'sri');
     navSectionAts.classList.toggle('active', sectionName === 'ats');
+    navSectionIva.classList.toggle('active', sectionName === 'iva');
 
     // Alternar vistas
     views.clientes.classList.toggle('active', sectionName === 'clientes');
     views.sri.classList.toggle('active', sectionName === 'sri');
     views.ats.classList.toggle('active', sectionName === 'ats');
+    views.iva.classList.toggle('active', sectionName === 'iva');
 
     // Si se cambia a ATS, refrescar la vista ATS para el cliente activo
     if (sectionName === 'ats' && state.activeClient) {
       atsModuleView.activate(state.activeClient);
+    }
+
+    // Si se cambia a IVA, refrescar la vista IVA para el cliente activo
+    if (sectionName === 'iva' && state.activeClient && ivaModuleView) {
+      const activeFolder = state.activeClient.defaultFolder || (window.tribuApi ? window.tribuApi.getBaseFolder() : null);
+      ivaModuleView.setClient(state.activeClient, activeFolder);
     }
 
     // Control dinámico de la barra y botones de acción según la sección activa
@@ -421,12 +433,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (btnDiscapacidadIva) {
         btnDiscapacidadIva.style.display = 'none';
       }
+      if (btnAutoLlenarDeclaracion) {
+        btnAutoLlenarDeclaracion.style.display = 'none';
+      }
     }
   }
 
   navSectionClientes.addEventListener('click', () => switchMainSection('clientes'));
   navSectionSri.addEventListener('click', () => switchMainSection('sri'));
   navSectionAts.addEventListener('click', () => switchMainSection('ats'));
+  navSectionIva.addEventListener('click', () => switchMainSection('iva'));
 
   // -------------------------------------------------------------
   // CONTROLADOR DE MODO OSCURO (SLICER DETRÁS DEL LOGO TRIBU)
@@ -605,6 +621,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       // En la sección ATS: activar comprobantes y periodos del nuevo usuario sin cambiar de sección
       atsModuleView.activate(client);
       showBanner(`Cambiado a ${client.razonSocial} en ATS`, 'info', 1200);
+    } else if (state.activeSection === 'iva') {
+      // En la sección IVA: actualizar períodos y cálculo para el nuevo usuario
+      if (ivaModuleView) {
+        const activeFolder = client.defaultFolder || (window.tribuApi ? window.tribuApi.getBaseFolder() : null);
+        ivaModuleView.setClient(client, activeFolder);
+      }
+      showBanner(`Cambiado a ${client.razonSocial} en Declaración IVA`, 'info', 1200);
     } else {
       // En la sección Clientes: solo actualiza la visualización de la interfaz
       renderClients(searchInput ? searchInput.value : '');
@@ -1150,6 +1173,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       organizeByType: false
     });
 
+    if (ivaModuleView) {
+      ivaModuleView.setClient(client, client.defaultFolder);
+    }
+
     let credentials = null;
     if (temporaryPassword) {
       credentials = { ruc: client.ruc, password: temporaryPassword };
@@ -1489,16 +1516,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  async function checkIfOnDeclaracionIvaPage() {
+    if (!currentWebview) return { isDeclaracionPage: false };
+    try {
+      const inspectScript = await window.tribuApi.getInspectDeclaracionScript();
+      return await currentWebview.executeJavaScript(inspectScript);
+    } catch (e) {
+      return { isDeclaracionPage: false };
+    }
+  }
+
   async function updateSriActionButtonsVisibility() {
     if (state.activeSection !== 'sri' || !currentWebview) {
       if (btnTriggerBulkDownload) btnTriggerBulkDownload.style.display = 'none';
       if (btnDiscapacidadIva) btnDiscapacidadIva.style.display = 'none';
+      if (btnAutoLlenarDeclaracion) btnAutoLlenarDeclaracion.style.display = 'none';
       return;
     }
 
-    const [isRecibidosPage, isReclamoPage] = await Promise.all([
+    const [isRecibidosPage, isReclamoPage, declaracionStatus] = await Promise.all([
       checkIfOnComprobantesRecibidosPage(),
-      checkIfOnReclamoDiscapacidadPage()
+      checkIfOnReclamoDiscapacidadPage(),
+      checkIfOnDeclaracionIvaPage()
     ]);
 
     if (btnTriggerBulkDownload) {
@@ -1507,6 +1546,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (btnDiscapacidadIva) {
       btnDiscapacidadIva.style.display = isReclamoPage ? 'inline-flex' : 'none';
+    }
+
+    if (btnAutoLlenarDeclaracion) {
+      const isDeclaracion = declaracionStatus && declaracionStatus.isDeclaracionPage;
+      if (isDeclaracion) {
+        btnAutoLlenarDeclaracion.style.display = 'inline-flex';
+        const calcPayload = ivaModuleView ? ivaModuleView.getCurrentCalculationPayload() : null;
+        const btnText = document.getElementById('btnAutoLlenarText');
+        if (calcPayload && calcPayload.periodo && calcPayload.periodo.month) {
+          if (btnText) btnText.textContent = `Autollenar IVA (${calcPayload.periodo.month}/${calcPayload.periodo.year})`;
+        } else {
+          if (btnText) btnText.textContent = 'Autollenar IVA';
+        }
+      } else {
+        btnAutoLlenarDeclaracion.style.display = 'none';
+      }
     }
   }
 
@@ -1952,6 +2007,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     getActiveClient: () => state.activeClient,
     showBanner: (msg, type, ms) => showBanner(msg, type, ms)
   });
+
+  const ivaModuleView = window.IvaModuleView ? new window.IvaModuleView() : null;
+
+  window.tribuNavDelegate = {
+    goToSriUrl: (url) => {
+      switchMainSection('sri');
+      if (currentWebview) {
+        currentWebview.src = url;
+      }
+    }
+  };
+
+  if (btnAutoLlenarDeclaracion) {
+    btnAutoLlenarDeclaracion.addEventListener('click', async () => {
+      if (state.activeSection !== 'sri' || !currentWebview) return;
+      const calcPayload = ivaModuleView ? ivaModuleView.getCurrentCalculationPayload() : null;
+      if (!calcPayload || !calcPayload.casilleros) {
+        showBanner('No hay datos calculados para este período. Abre la sección Declaración IVA para verificar.', 'warning', 3500);
+        return;
+      }
+
+      showBanner('Autollenando formulario de IVA con los datos calculados del período...', 'info');
+      try {
+        const declaracionStatus = await checkIfOnDeclaracionIvaPage();
+        if (!declaracionStatus || !declaracionStatus.isDeclaracionPage) {
+          showBanner('Por favor asegúrate de estar en la pantalla de Declaración del SRI.', 'warning', 3500);
+          return;
+        }
+
+        if (declaracionStatus.phase === 'preguntas') {
+          const profileScript = await window.tribuApi.getFillProfilingScript(calcPayload.perfilamiento);
+          const profRes = await currentWebview.executeJavaScript(profileScript);
+          showBanner(`Perfilamiento completado (${profRes.filledCount || 12} respuestas asignadas). Presiona Siguiente en el SRI.`, 'success', 4000);
+        } else {
+          const casillerosScript = await window.tribuApi.getFillCasillerosScript(calcPayload.casilleros);
+          const formRes = await currentWebview.executeJavaScript(casillerosScript);
+          showBanner(`Casilleros autollenados (${formRes.filledCasilleros || 20} casilleros completados). Revisa antes de confirmar.`, 'success', 5000);
+        }
+      } catch (err) {
+        console.error('Error autollenando formulario IVA:', err);
+        showBanner('Error al autollenar formulario: ' + err.message, 'danger', 4000);
+      }
+    });
+  }
 
   // -------------------------------------------------------------
   // UTILIDADES GENERALES

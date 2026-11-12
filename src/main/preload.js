@@ -35,6 +35,9 @@ contextBridge.exposeInMainWorld('tribuApi', {
   getApplyDiscapacidadScript: (config) => ipcRenderer.invoke('sri:get-apply-discapacidad-script', config),
   getActivateAllReclamoRowsScript: () => ipcRenderer.invoke('sri:get-activate-all-reclamo-rows-script'),
   getProcessReclamoRowScript: (rowIndex) => ipcRenderer.invoke('sri:get-process-reclamo-row-script', rowIndex),
+  getInspectDeclaracionScript: () => ipcRenderer.invoke('sri:get-inspect-declaracion-script'),
+  getFillProfilingScript: (respuestas) => ipcRenderer.invoke('sri:get-fill-profiling-script', respuestas),
+  getFillCasillerosScript: (casilleros) => ipcRenderer.invoke('sri:get-fill-casilleros-script', casilleros),
   dumpDebug: (data) => ipcRenderer.invoke('sri:dump-debug', data),
 
   // =============================================================
@@ -46,6 +49,12 @@ contextBridge.exposeInMainWorld('tribuApi', {
   generateAtsXml: (params) => ipcRenderer.invoke('ats:generate-xml', params),
   exportToCsv: (params) => ipcRenderer.invoke('ats:export-csv', params),
   getAtsConstants: () => ipcRenderer.invoke('ats:get-constants'),
+
+  // =============================================================
+  // MÓDULO DECLARACIONES SRI (FORMULARIO 104 IVA)
+  // =============================================================
+  getDeclaracionPeriodData: (params) => ipcRenderer.invoke('declaraciones:get-period-data', params),
+  saveDeclaracionPeriodData: (params) => ipcRenderer.invoke('declaraciones:save-period-data', params),
 
   // Suscripción a eventos en tiempo real
   onDownloadStarted: (callback) => {

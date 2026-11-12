@@ -130,11 +130,12 @@
       </div>
     </div>
 
-    <!-- Secciones de Navegación: Clientes, SRI, ATS (Centradas en el encabezado) -->
+    <!-- Secciones de Navegación: Clientes, SRI, ATS, Declaración IVA (Centradas en el encabezado) -->
     <nav class="header-nav-tabs">
       <button id="navSectionClientes" class="nav-tab-btn active" data-section="clientes">Clientes</button>
       <button id="navSectionSri" class="nav-tab-btn" data-section="sri">SRI</button>
       <button id="navSectionAts" class="nav-tab-btn" data-section="ats">ATS</button>
+      <button id="navSectionIva" class="nav-tab-btn" data-section="iva">Declaración IVA</button>
     </nav>
 
     <!-- Espacio Derecho: Indicador de Versión y Campana de Notificaciones -->
@@ -287,6 +288,12 @@
             </svg>
             <span>Reclamo Automático</span>
           </button>
+          <button id="btnAutoLlenarDeclaracion" class="btn btn-declaracion" style="display: none;" title="Autollenar formulario de IVA con los datos calculados de este período">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+            <span id="btnAutoLlenarText">Autollenar IVA</span>
+          </button>
         </div>
       </div>
 
@@ -412,7 +419,209 @@
       </div>
     </section>
 
-  </main>
+    <!-- SECCIÓN 4: DECLARACIÓN DE IVA (FORMULARIO 104) -->
+    <section id="viewIva" class="view">
+      <div class="iva-view-container" id="clientIvaContainer">
+
+        <!-- Barra Superior de Control del Período -->
+        <div class="iva-toolbar">
+          <div class="iva-toolbar-left">
+            <span class="iva-section-badge">Formulario 104</span>
+            <span class="iva-client-label" id="ivaActiveClientName">Selecciona un cliente</span>
+            <div class="iva-period-selector-group">
+              <div class="iva-filter-item">
+                <label for="ivaFilterYear">Año:</label>
+                <select id="ivaFilterYear" class="iva-select"></select>
+              </div>
+              <div class="iva-filter-item">
+                <label for="ivaFilterMonth">Mes:</label>
+                <select id="ivaFilterMonth" class="iva-select"></select>
+              </div>
+            </div>
+          </div>
+
+          <div class="iva-toolbar-right">
+            <div id="ivaIntegrityPill" class="iva-status-pill status-verifying">
+              <span class="status-dot"></span>
+              <span id="ivaIntegrityText">Verificando comprobantes...</span>
+            </div>
+            <button id="btnIvaAjustesEspeciales" class="btn btn-secondary btn-sm" title="Ajustes de crédito tributario anterior o casos especiales">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+              <span>Ajustes Especiales</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Banner de Diagnóstico / Checklist de Integridad de Fuentes -->
+        <div class="iva-checklist-section">
+          <div class="iva-checklist-header">
+            <h4 class="iva-checklist-title">Diagnóstico y Verificación de Fuentes del Período</h4>
+            <span class="iva-checklist-sub">Revisa la disponibilidad de comprobantes antes de emitir el borrador oficial.</span>
+          </div>
+
+          <div class="iva-sources-grid">
+            <!-- Fuente 1: Compras (Recibidos) -->
+            <div class="iva-source-card" id="sourceCardCompras">
+              <div class="source-card-top">
+                <span class="source-card-tag">Compras (Recibidos)</span>
+                <span class="source-status-badge" id="badgeCompras">Cargando...</span>
+              </div>
+              <div class="source-card-metrics">
+                <span class="source-metric-val" id="valComprasCount">0 facturas</span>
+                <span class="source-metric-sub" id="valComprasTotal">$0.00 base neta</span>
+              </div>
+              <div class="source-card-actions">
+                <button type="button" class="btn-source-action btn-nav-sri" id="btnNavSriCompras" title="Ir a la pantalla de comprobantes recibidos del SRI">
+                  <span>Descargar en SRI</span>
+                </button>
+                <button type="button" class="btn-source-action btn-confirm-zero" id="btnConfirmComprasZero" title="Confirmar que no hubo compras deducibles en el mes">
+                  <span>Confirmar $0</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Fuente 2: Ventas (Emitidos) -->
+            <div class="iva-source-card" id="sourceCardVentas">
+              <div class="source-card-top">
+                <span class="source-card-tag">Ventas (Emitidos)</span>
+                <span class="source-status-badge" id="badgeVentas">Cargando...</span>
+              </div>
+              <div class="source-card-metrics">
+                <span class="source-metric-val" id="valVentasCount">0 facturas</span>
+                <span class="source-metric-sub" id="valVentasTotal">$0.00 base neta</span>
+              </div>
+              <div class="source-card-actions">
+                <button type="button" class="btn-source-action btn-nav-sri" id="btnNavSriVentas" title="Ir a la pantalla de comprobantes emitidos del SRI">
+                  <span>Descargar en SRI</span>
+                </button>
+                <button type="button" class="btn-source-action btn-confirm-zero" id="btnConfirmVentasZero" title="Confirmar que no hubo ventas en el mes">
+                  <span>Confirmar $0</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Fuente 3: Retenciones Recibidas -->
+            <div class="iva-source-card" id="sourceCardRetRecibidas">
+              <div class="source-card-top">
+                <span class="source-card-tag">Retenciones Recibidas</span>
+                <span class="source-status-badge" id="badgeRetRecibidas">Cargando...</span>
+              </div>
+              <div class="source-card-metrics">
+                <span class="source-metric-val" id="valRetRecibidasCount">0 retenciones</span>
+                <span class="source-metric-sub" id="valRetRecibidasTotal">$0.00 a favor</span>
+              </div>
+              <div class="source-card-actions">
+                <button type="button" class="btn-source-action btn-nav-sri" id="btnNavSriRetRecibidas" title="Ir a la consulta de retenciones recibidas en el SRI">
+                  <span>Descargar en SRI</span>
+                </button>
+                <button type="button" class="btn-source-action btn-confirm-zero" id="btnConfirmRetRecibidasZero" title="Confirmar que no le efectuaron retenciones">
+                  <span>Confirmar $0</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Fuente 4: Retenciones Emitidas -->
+            <div class="iva-source-card" id="sourceCardRetEmitidas">
+              <div class="source-card-top">
+                <span class="source-card-tag">Retenciones Emitidas (Agente)</span>
+                <span class="source-status-badge" id="badgeRetEmitidas">Cargando...</span>
+              </div>
+              <div class="source-card-metrics">
+                <span class="source-metric-val" id="valRetEmitidasCount">0 emitidas</span>
+                <span class="source-metric-sub" id="valRetEmitidasTotal">$0.00 a pagar</span>
+              </div>
+              <div class="source-card-actions">
+                <button type="button" class="btn-source-action btn-nav-sri" id="btnNavSriRetEmitidas" title="Ir a la consulta de retenciones emitidas en el SRI">
+                  <span>Descargar en SRI</span>
+                </button>
+                <button type="button" class="btn-source-action btn-confirm-zero" id="btnConfirmRetEmitidasZero" title="Confirmar que no es agente o no retuvo">
+                  <span>No aplica ($0)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tarjetas de Resumen Ejecutivo de Liquidación (4 Métricas Clave) -->
+        <div class="iva-summary-board">
+          <div class="iva-summary-card">
+            <span class="summary-label">Ventas Netas (Bases)</span>
+            <div class="summary-value" id="sumVentasNetas">$0.00</div>
+            <span class="summary-footnote" id="sumIvaGenerado">IVA Generado: $0.00</span>
+          </div>
+
+          <div class="iva-summary-card">
+            <span class="summary-label">Compras Acreditables</span>
+            <div class="summary-value" id="sumComprasNetas">$0.00</div>
+            <span class="summary-footnote" id="sumIvaAcreditable">Crédito del mes: $0.00</span>
+          </div>
+
+          <div class="iva-summary-card">
+            <span class="summary-label">Retenciones Recibidas</span>
+            <div class="summary-value" id="sumRetencionesFavor">$0.00</div>
+            <span class="summary-footnote" id="sumCreditoAnterior">Crédito mes anterior: $0.00</span>
+          </div>
+
+          <div class="iva-summary-card result-card" id="cardResultadoFinal">
+            <span class="summary-label" id="lblResultadoFinal">Resultado de Liquidación</span>
+            <div class="summary-value result-amount" id="sumResultadoMonto">$0.00</div>
+            <span class="summary-footnote" id="sumResultadoDesc">Sin transacciones registradas</span>
+          </div>
+        </div>
+
+        <!-- Barra de Acciones Principales -->
+        <div class="iva-actions-bar">
+          <div class="iva-actions-left">
+            <button id="btnIvaAbrirSri" class="btn btn-primary" title="Abrir navegador del SRI y cargar el borrador de declaración">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+              <span>Abrir SRI y Autollenar Formulario</span>
+            </button>
+            <button id="btnIvaRecalcular" class="btn btn-secondary" title="Actualizar lectura de comprobantes">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              </svg>
+              <span>Recalcular</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Acordeón Desplegable: Detalle de Casilleros Oficiales Formulario 104 -->
+        <div class="iva-accordion-section">
+          <div class="iva-accordion-toggle" id="btnToggleCasillerosAccordion" role="button" tabindex="0">
+            <div class="accordion-toggle-left">
+              <span class="accordion-caret" id="accordionCaret">&#9656;</span>
+              <span class="accordion-title">Ver Desglose Oficial de Casilleros (Formulario 104)</span>
+            </div>
+            <span class="accordion-badge" id="accordionCasillerosCount">Casilleros calculados</span>
+          </div>
+
+          <div class="iva-accordion-body" id="ivaCasillerosBody" style="display: none;">
+            <div class="iva-casilleros-table-wrapper">
+              <table class="iva-casilleros-table">
+                <thead>
+                  <tr>
+                    <th style="width: 90px;">Casillero</th>
+                    <th>Descripción Oficial SRI</th>
+                    <th style="width: 130px; text-align: right;">Valor</th>
+                    <th style="width: 240px;">Fórmula / Fuente</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyCasillerosFormulario">
+                  <!-- Inyectado dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
 
   <!-- MODAL: AJUSTES (CONFIGURACIÓN DE CARPETA DE CLIENTES) -->
   <div id="settingsModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
@@ -442,6 +651,50 @@
 
       <div class="modal-footer">
         <button id="btnDoneSettingsModal" class="btn btn-primary">Listo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AJUSTES ESPECIALES DE DECLARACIÓN IVA -->
+  <div id="ivaAjustesModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="ivaAjustesModalTitle">
+    <div class="modal-content" style="max-width: 560px;">
+      <div class="modal-header">
+        <h3 id="ivaAjustesModalTitle" class="modal-title">Ajustes Especiales de Liquidación IVA</h3>
+        <button id="btnCloseIvaAjustesModal" class="modal-close-btn" aria-label="Cerrar ajustes">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.45;">
+          Ingresa manualmente saldos a favor anteriores o valores autorizados por resolución del SRI para el cálculo de este período.
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label for="inputAjusteC605" style="font-size: 12px; font-weight: 600;">Saldo Adquisiciones Anterior (605):</label>
+            <input type="number" step="0.01" min="0" id="inputAjusteC605" class="modal-input" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label for="inputAjusteC606" style="font-size: 12px; font-weight: 600;">Saldo Retenciones Anterior (606):</label>
+            <input type="number" step="0.01" min="0" id="inputAjusteC606" class="modal-input" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label for="inputAjusteC607" style="font-size: 12px; font-weight: 600;">Devolución / Compensación SRI (607):</label>
+            <input type="number" step="0.01" min="0" id="inputAjusteC607" class="modal-input" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label for="inputAjusteC802" style="font-size: 12px; font-weight: 600;">Retenciones Sector Público (802):</label>
+            <input type="number" step="0.01" min="0" id="inputAjusteC802" class="modal-input" placeholder="0.00">
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button id="btnCancelIvaAjustes" class="btn btn-secondary">Cancelar</button>
+        <button id="btnSaveIvaAjustes" class="btn btn-primary">Guardar Ajustes</button>
       </div>
     </div>
   </div>
@@ -870,6 +1123,7 @@
   </div>
 
   <script src="js/modules/atsModuleView.js"></script>
+  <script src="js/modules/ivaModuleView.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

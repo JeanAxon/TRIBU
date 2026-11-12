@@ -1341,6 +1341,193 @@ function getActivateAllReclamoRowsScript() {
   return '(' + fn.toString() + ')();';
 }
 
+/**
+ * Script para inspeccionar el estado actual de la pantalla de Declaración de IVA
+ * Detecta si está en recibirDeclaracion.jsf, fase (periodo, preguntas, formulario),
+ * y extrae el periodo seleccionado si está disponible.
+ */
+function getInspectDeclaracionPageScript() {
+  const fn = function() {
+    const url = window.location.href || '';
+    const isDeclaracionPage = url.includes('recibirDeclaracion.jsf') || url.includes('declaraciones');
+    if (!isDeclaracionPage) {
+      return {
+        isDeclaracionPage: false,
+        phase: 'none',
+        periodoTexto: null,
+        year: null,
+        month: null
+      };
+    }
+
+    let phase = 'unknown';
+    // Fase 1: Selección de período fiscal
+    const somObligacion = document.querySelector('[id*="somObligacion"]');
+    const calPeriodo = document.querySelector('[id*="calPeriodo"]');
+    
+    // Fase 2: Preguntas de perfilamiento
+    const preguntas = document.querySelectorAll('[id*="pregunta"]');
+    
+    // Fase 3: Formulario interactivo
+    const hasFormulario = document.querySelector('[id*="casillero"], [id*="panelFormulario"], .ui-accordion');
+
+    let periodoTexto = null;
+    let year = null;
+    let month = null;
+
+    if (calPeriodo) {
+      periodoTexto = calPeriodo.innerText || calPeriodo.value || '';
+      // Intentar extraer año de 4 dígitos
+      const yMatch = periodoTexto.match(/\b(20\d{2})\b/);
+      if (yMatch) year = yMatch[1];
+      // Intentar extraer mes numérico o por nombre
+      const mMatch = periodoTexto.match(/\b(0?[1-9]|1[0-2])\b/);
+      if (mMatch) month = mMatch[1].padStart(2, '0');
+    }
+
+    if (preguntas.length > 5) {
+      phase = 'preguntas';
+    } else if (hasFormulario && !calPeriodo) {
+      phase = 'formulario';
+    } else if (calPeriodo || somObligacion) {
+      phase = 'periodo';
+    }
+
+    return {
+      isDeclaracionPage: true,
+      phase,
+      periodoTexto,
+      year,
+      month,
+      hasPreguntas: preguntas.length > 0,
+      hasFormulario: Boolean(hasFormulario)
+    };
+  };
+
+  return '(' + fn.toString() + ')();';
+}
+
+/**
+ * Script para rellenar automáticamente las preguntas de perfilamiento (Fase 2)
+ */
+function getFillDeclaracionProfilingScript(respuestas = {}) {
+  const payload = JSON.stringify(respuestas);
+  const fn = function(dataStr) {
+    const data = JSON.parse(dataStr);
+    let filledCount = 0;
+
+    // Recorrer las preguntas de pregunta0 a pregunta11
+    for (let i = 0; i <= 11; i++) {
+      const qKey = 'pregunta' + i;
+      const targetVal = (data[qKey] || 'No').toLowerCase(); // 'si' o 'no'
+
+      // Buscar el contenedor de la pregunta
+      const container = document.querySelector('[id$="' + qKey + '"], [id*="' + qKey + '_"]');
+      if (!container) continue;
+
+      // Buscar opciones Sí y No dentro del contenedor
+      const radioBoxes = container.querySelectorAll('.ui-radiobutton');
+      for (const rBox of radioBoxes) {
+        const label = rBox.parentElement ? rBox.parentElement.querySelector('label') : null;
+        const labelText = label ? label.innerText.trim().toLowerCase() : '';
+        const input = rBox.querySelector('input[type="radio"]');
+
+        const isSi = labelText === 'sí' || labelText === 'si' || (input && (input.value === '0' || input.value === 'true'));
+        const isNo = labelText === 'no' || (input && (input.value === '1' || input.value === 'false'));
+
+        if ((targetVal === 'si' && isSi) || (targetVal === 'no' && isNo)) {
+          const clickTarget = rBox.querySelector('.ui-radiobutton-box') || input || rBox;
+          if (clickTarget) {
+            clickTarget.click();
+            if (input) {
+              input.checked = true;
+              input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            filledCount++;
+          }
+          break;
+        }
+      }
+    }
+
+    return {
+      success: true,
+      filledCount: filledCount
+    };
+  };
+
+  return '(' + fn.toString() + ')(' + JSON.stringify(payload) + ');';
+}
+
+/**
+ * Script para rellenar los casilleros del formulario interactivo (Fase 3)
+ */
+function getFillDeclaracionCasillerosScript(casilleros = {}) {
+  const payload = JSON.stringify(casilleros);
+  const fn = function(dataStr) {
+    const data = JSON.parse(dataStr);
+    let filledCasilleros = 0;
+
+    // Desplegar todos los acordeones si están colapsados
+    const accordionHeaders = document.querySelectorAll('.ui-accordion-header:not(.ui-state-active)');
+    for (const h of accordionHeaders) {
+      h.click();
+    }
+
+    // Buscar inputs que coincidan con los números de casilleros
+    for (const [key, rawVal] of Object.entries(data)) {
+      if (rawVal === undefined || rawVal === null) continue;
+      const casilleroNum = key.replace(/\D/g, '');
+      if (!casilleroNum) continue;
+
+      const valStr = typeof rawVal === 'number' ? rawVal.toFixed(2) : String(rawVal);
+
+      // Estrategias para encontrar el input del casillero:
+      // 1. Por ID directo que termine o contenga el número de casillero
+      let input = document.querySelector(
+        'input[id$="casillero' + casilleroNum + '"], ' +
+        'input[id$="' + casilleroNum + '"], ' +
+        'input[id*="casillero' + casilleroNum + '_input"], ' +
+        'input[name*="' + casilleroNum + '"]'
+      );
+
+      // 2. Si no por ID, buscar label con el número de casillero y tomar el input hermano/asociado
+      if (!input) {
+        const labels = Array.from(document.querySelectorAll('label, td, span')).filter(el => {
+          const txt = el.innerText ? el.innerText.trim() : '';
+          return txt === casilleroNum || txt.startsWith(casilleroNum + ' ');
+        });
+        for (const l of labels) {
+          const parentRow = l.closest('tr, div.ui-g');
+          if (parentRow) {
+            const foundInput = parentRow.querySelector('input[type="text"], input:not([type="hidden"])');
+            if (foundInput && !foundInput.disabled && !foundInput.readOnly) {
+              input = foundInput;
+              break;
+            }
+          }
+        }
+      }
+
+      if (input && !input.disabled && !input.readOnly) {
+        input.focus();
+        input.value = valStr;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        input.dispatchEvent(new Event('blur', { bubbles: true }));
+        filledCasilleros++;
+      }
+    }
+
+    return {
+      success: true,
+      filledCasilleros
+    };
+  };
+
+  return '(' + fn.toString() + ')(' + JSON.stringify(payload) + ');';
+}
+
 module.exports = {
   getLoginScript,
   getPasswordCaptureScript,
@@ -1350,5 +1537,8 @@ module.exports = {
   getInspectDiscapacidadTableScript,
   getApplyDiscapacidadIvaScript,
   getActivateAllReclamoRowsScript,
-  getProcessReclamoRowScript
+  getProcessReclamoRowScript,
+  getInspectDeclaracionPageScript,
+  getFillDeclaracionProfilingScript,
+  getFillDeclaracionCasillerosScript
 };

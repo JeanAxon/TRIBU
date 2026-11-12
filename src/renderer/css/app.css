@@ -3358,3 +3358,532 @@ body.theme-dark .user-dropdown-item.active {
 .btn-view-factura svg {
   flex-shrink: 0;
 }
+
+/* =============================================================
+   MÓDULO DE DECLARACIÓN DE IVA (FORMULARIO 104)
+   Estilo Swiss Minimalist, Alta Precisión y Modo Oscuro/Claro
+   ============================================================= */
+
+/* Botón de Autollenado en la Barra de Herramientas del SRI */
+.btn-declaracion {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff !important;
+  border: 1px solid rgba(2, 132, 199, 0.4);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25);
+}
+
+.btn-declaracion:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-declaracion svg {
+  fill: #ffffff;
+  stroke: none;
+}
+
+/* Contenedor Principal de la Vista IVA */
+.iva-view-container {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 24px;
+  max-width: 1320px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Barra Superior de Control */
+.iva-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
+  box-shadow: var(--shadow-xs);
+}
+
+.iva-toolbar-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.iva-section-badge {
+  background-color: var(--primary-soft);
+  color: var(--primary);
+  border: 1px solid var(--primary-soft-border);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.iva-client-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.iva-period-selector-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 8px;
+}
+
+.iva-filter-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.iva-filter-item label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.iva-select {
+  background-color: var(--secondary);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.iva-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-soft);
+}
+
+.iva-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.iva-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.iva-status-pill.status-ready {
+  background-color: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.iva-status-pill.status-attention {
+  background-color: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.iva-status-pill.status-verifying {
+  background-color: var(--secondary);
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
+}
+
+body.dark-mode .iva-status-pill.status-ready {
+  background-color: rgba(6, 95, 70, 0.25);
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+body.dark-mode .iva-status-pill.status-attention {
+  background-color: rgba(146, 64, 14, 0.25);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+/* Sección de Diagnóstico / Checklist de Fuentes */
+.iva-checklist-section {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-xs);
+}
+
+.iva-checklist-header {
+  margin-bottom: 14px;
+}
+
+.iva-checklist-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--card-foreground);
+}
+
+.iva-checklist-sub {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.iva-sources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.iva-source-card {
+  background-color: var(--muted-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  transition: var(--transition-fast);
+}
+
+.iva-source-card:hover {
+  border-color: var(--input);
+  background-color: var(--secondary);
+}
+
+.source-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.source-card-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted-foreground);
+}
+
+.source-status-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.source-status-badge.status-ok {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.source-status-badge.status-warning {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.source-status-badge.status-neutral {
+  background-color: var(--secondary);
+  color: var(--muted-foreground);
+}
+
+body.dark-mode .source-status-badge.status-ok {
+  background-color: rgba(6, 95, 70, 0.3);
+  color: #6ee7b7;
+}
+
+body.dark-mode .source-status-badge.status-warning {
+  background-color: rgba(146, 64, 14, 0.3);
+  color: #fcd34d;
+}
+
+.source-card-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.source-metric-val {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.source-metric-sub {
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.source-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.btn-source-action {
+  flex: 1;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: var(--transition-fast);
+  text-align: center;
+}
+
+.btn-source-action.btn-nav-sri {
+  background-color: var(--secondary);
+  color: var(--foreground);
+}
+
+.btn-source-action.btn-nav-sri:hover {
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.btn-source-action.btn-confirm-zero {
+  background-color: transparent;
+  color: var(--muted-foreground);
+}
+
+.btn-source-action.btn-confirm-zero:hover {
+  background-color: var(--muted-hover);
+  color: var(--foreground);
+}
+
+/* Tablero de Resumen Ejecutivo de Liquidación */
+.iva-summary-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.iva-summary-card {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: var(--shadow-xs);
+}
+
+.summary-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.summary-footnote {
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+}
+
+/* Tarjeta Destacada de Resultado Final */
+.iva-summary-card.result-card {
+  border-width: 1.5px;
+}
+
+.result-card.result-pay {
+  border-color: #f87171;
+  background: linear-gradient(180deg, var(--card) 0%, rgba(239, 68, 68, 0.05) 100%);
+}
+
+.result-card.result-pay .result-amount {
+  color: #dc2626;
+}
+
+.result-card.result-credit {
+  border-color: #34d399;
+  background: linear-gradient(180deg, var(--card) 0%, rgba(16, 185, 129, 0.05) 100%);
+}
+
+.result-card.result-credit .result-amount {
+  color: #059669;
+}
+
+.result-card.result-zero {
+  border-color: var(--border);
+}
+
+body.dark-mode .result-card.result-pay .result-amount {
+  color: #f87171;
+}
+
+body.dark-mode .result-card.result-credit .result-amount {
+  color: #34d399;
+}
+
+/* Barra de Acciones Principales */
+.iva-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.iva-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Acordeón de Casilleros Oficiales Formulario 104 */
+.iva-accordion-section {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-xs);
+}
+
+.iva-accordion-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  cursor: pointer;
+  background-color: var(--card);
+  border-bottom: 1px solid transparent;
+  transition: var(--transition-fast);
+  user-select: none;
+}
+
+.iva-accordion-toggle:hover {
+  background-color: var(--muted-subtle);
+}
+
+.accordion-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accordion-caret {
+  font-size: 14px;
+  color: var(--muted-foreground);
+  transition: transform var(--transition-fast);
+}
+
+.accordion-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--card-foreground);
+}
+
+.accordion-badge {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  background-color: var(--secondary);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.iva-casilleros-table-wrapper {
+  overflow-x: auto;
+  border-top: 1px solid var(--border);
+  max-height: 480px;
+}
+
+.iva-casilleros-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.iva-casilleros-table th {
+  background-color: var(--secondary);
+  padding: 8px 14px;
+  color: var(--muted-foreground);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 11px;
+}
+
+.iva-casilleros-table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+.iva-casilleros-table tr:hover {
+  background-color: var(--muted-subtle);
+}
+
+.col-casillero-code {
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.col-casillero-desc {
+  font-weight: 500;
+}
+
+.col-casillero-val {
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.col-casillero-note {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
+.casillero-row-highlight {
+  background-color: var(--primary-soft) !important;
+}
+
+.casillero-row-highlight .col-casillero-code {
+  color: var(--primary);
+}
+
+.casillero-row-highlight .col-casillero-val {
+  color: var(--primary);
+  font-size: 12.5px;
+}
+
