@@ -42,45 +42,57 @@ app.whenReady().then(async () => {
   console.log('  - Detección de nombre parecido con otro RUC:', match2 ? `${match2.matchReason} (${match2.similarity * 100}%)` : 'Ninguna', match2 ? '[OK]' : '[FAIL]');
 
   // 3. Caso 1: Es el mismo cliente -> Modificar / Corregir nombre
-  console.log('\n3. Verificando Caso 1: Es el mismo cliente (Actualizar nombre):');
-  const tempClient = await clientStorage.save({
-    ruc: '0991112223001',
-    apellidos: 'GONZALES PEREZ',
-    nombres: 'CARLOS',
-    tipoContribuyente: 'natural'
-  });
-  console.log('  - Cliente original creado:', tempClient.razonSocial);
+  let tempClient = null;
+  let updatedClient = null;
+  let homonimoClient = null;
 
-  // Corregir nombre antiguo ("GONZALES" a "GONZÁLEZ")
-  const updatedClient = await clientStorage.save({
-    ruc: '0991112223001',
-    apellidos: 'GONZÁLEZ PÉREZ',
-    nombres: 'CARLOS ALBERTO',
-    tipoContribuyente: 'natural'
-  }, { overwriteExistingId: tempClient.id });
+  try {
+    console.log('\n3. Verificando Caso 1: Es el mismo cliente (Actualizar nombre):');
+    tempClient = await clientStorage.save({
+      ruc: '0991112223001',
+      apellidos: 'GONZALES PEREZ',
+      nombres: 'CARLOS',
+      tipoContribuyente: 'natural'
+    });
+    console.log('  - Cliente original creado:', tempClient.razonSocial);
 
-  console.log('  - Cliente corregido:', updatedClient.razonSocial);
-  console.log('  - Carpeta actualizada en disco:', fs.existsSync(updatedClient.defaultFolder) ? '[OK]' : '[FAIL]');
+    // Corregir nombre antiguo ("GONZALES" a "GONZÁLEZ")
+    updatedClient = await clientStorage.save({
+      ruc: '0991112223001',
+      apellidos: 'GONZÁLEZ PÉREZ',
+      nombres: 'CARLOS ALBERTO',
+      tipoContribuyente: 'natural'
+    }, { overwriteExistingId: tempClient.id });
 
-  // 4. Caso 2: Es un cliente nuevo con mismo nombre -> Diferenciador automático
-  console.log('\n4. Verificando Caso 2: Nuevo cliente con mismo nombre (Diferenciador automático):');
-  const homonimoClient = await clientStorage.save({
-    ruc: '0998887776001',
-    apellidos: 'GONZÁLEZ PÉREZ',
-    nombres: 'CARLOS ALBERTO',
-    diferenciador: '(0998887776001)',
-    tipoContribuyente: 'natural'
-  });
-  console.log('  - Homónimo creado con diferenciador:', homonimoClient.razonSocial);
-  console.log('  - Carpeta diferenciada en disco:', homonimoClient.defaultFolder);
-  console.log('  - Carpeta distinta de la original:', (homonimoClient.defaultFolder !== updatedClient.defaultFolder) ? '[OK]' : '[FAIL]');
+    console.log('  - Cliente corregido:', updatedClient.razonSocial);
+    console.log('  - Carpeta actualizada en disco:', fs.existsSync(updatedClient.defaultFolder) ? '[OK]' : '[FAIL]');
 
-  // Limpiar clientes de prueba
-  clientStorage.delete(tempClient.id);
-  clientStorage.delete(homonimoClient.id);
-  if (fs.existsSync(tempClient.defaultFolder)) fs.rmSync(tempClient.defaultFolder, { recursive: true, force: true });
-  if (fs.existsSync(updatedClient.defaultFolder)) fs.rmSync(updatedClient.defaultFolder, { recursive: true, force: true });
-  if (fs.existsSync(homonimoClient.defaultFolder)) fs.rmSync(homonimoClient.defaultFolder, { recursive: true, force: true });
+    // 4. Caso 2: Es un cliente nuevo con mismo nombre -> Diferenciador automático
+    console.log('\n4. Verificando Caso 2: Nuevo cliente con mismo nombre (Diferenciador automático):');
+    homonimoClient = await clientStorage.save({
+      ruc: '0998887776001',
+      apellidos: 'GONZÁLEZ PÉREZ',
+      nombres: 'CARLOS ALBERTO',
+      diferenciador: '(0998887776001)',
+      tipoContribuyente: 'natural'
+    });
+    console.log('  - Homónimo creado con diferenciador:', homonimoClient.razonSocial);
+    console.log('  - Carpeta diferenciada en disco:', homonimoClient.defaultFolder);
+    console.log('  - Carpeta distinta de la original:', (homonimoClient.defaultFolder !== updatedClient.defaultFolder) ? '[OK]' : '[FAIL]');
+  } finally {
+    // Limpiar clientes de prueba garantizado
+    if (tempClient && tempClient.id) clientStorage.delete(tempClient.id);
+    if (homonimoClient && homonimoClient.id) clientStorage.delete(homonimoClient.id);
+    if (tempClient && tempClient.defaultFolder && fs.existsSync(tempClient.defaultFolder)) {
+      try { fs.rmSync(tempClient.defaultFolder, { recursive: true, force: true }); } catch (e) {}
+    }
+    if (updatedClient && updatedClient.defaultFolder && fs.existsSync(updatedClient.defaultFolder)) {
+      try { fs.rmSync(updatedClient.defaultFolder, { recursive: true, force: true }); } catch (e) {}
+    }
+    if (homonimoClient && homonimoClient.defaultFolder && fs.existsSync(homonimoClient.defaultFolder)) {
+      try { fs.rmSync(homonimoClient.defaultFolder, { recursive: true, force: true }); } catch (e) {}
+    }
+  }
 
   console.log('\n--- Todas las pruebas del protocolo pasaron con éxito ---');
   app.quit();

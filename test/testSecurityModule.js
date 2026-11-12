@@ -42,45 +42,54 @@ app.whenReady().then(async () => {
     // 4. Guardar cliente de prueba con formato estandarizado de Apellidos y Nombres
     const testRuc = '9999999999001';
     const testPassword = 'TestSecure"Pass.2026';
-    const savedClient = await security.clientStorage.save({
-      ruc: testRuc,
-      tipoContribuyente: 'natural',
-      apellidos: 'PEREZ LOPEZ',
-      nombres: 'JUAN CARLOS',
-      password: testPassword
-    });
+    let savedClient = null;
 
-    if (savedClient.razonSocial !== 'PEREZ LOPEZ JUAN CARLOS') {
-      throw new Error(`Razón social no estandarizada: ${savedClient.razonSocial}`);
+    try {
+      savedClient = await security.clientStorage.save({
+        ruc: testRuc,
+        tipoContribuyente: 'natural',
+        apellidos: 'PEREZ LOPEZ',
+        nombres: 'JUAN CARLOS',
+        password: testPassword
+      });
+
+      if (savedClient.razonSocial !== 'PEREZ LOPEZ JUAN CARLOS') {
+        throw new Error(`Razón social no estandarizada: ${savedClient.razonSocial}`);
+      }
+
+      const creds = await security.clientStorage.getCredentials(testRuc);
+      if (!creds || creds.password !== testPassword) {
+        throw new Error(`Credenciales no coinciden. Esperado: ${testPassword}, Obtenido: ${creds ? creds.password : null}`);
+      }
+
+      // Comprobar que tribu_session.enc se haya creado en la carpeta del cliente y esté cifrado
+      const sessionFilePath = path.join(savedClient.defaultFolder, 'tribu_session.enc');
+      const fs = require('fs');
+      if (!fs.existsSync(sessionFilePath)) {
+        throw new Error(`El archivo de sesión cifrada no existe en: ${sessionFilePath}`);
+      }
+      const sessionEncContent = fs.readFileSync(sessionFilePath, 'utf8');
+      if (!sessionEncContent.startsWith('safe:') && !sessionEncContent.startsWith('fallback:')) {
+        throw new Error('El archivo tribu_session.enc no tiene formato cifrado');
+      }
+      console.log('4. Guardado y recuperacion de credenciales seguras (incluyendo tribu_session.enc en su carpeta): CORRECTO');
+    } finally {
+      // 5. Eliminar cliente de prueba para no ensuciar datos
+      try {
+        security.clientStorage.delete(testRuc);
+      } catch (e) {}
+
+      const fs = require('fs');
+      if (savedClient && savedClient.defaultFolder && fs.existsSync(savedClient.defaultFolder)) {
+        try {
+          fs.rmSync(savedClient.defaultFolder, { recursive: true, force: true });
+        } catch (e) {}
+      }
     }
 
-    const creds = await security.clientStorage.getCredentials(testRuc);
-    if (!creds || creds.password !== testPassword) {
-      throw new Error(`Credenciales no coinciden. Esperado: ${testPassword}, Obtenido: ${creds ? creds.password : null}`);
-    }
-
-    // Comprobar que tribu_session.enc se haya creado en la carpeta del cliente y esté cifrado
-    const sessionFilePath = path.join(savedClient.defaultFolder, 'tribu_session.enc');
-    const fs = require('fs');
-    if (!fs.existsSync(sessionFilePath)) {
-      throw new Error(`El archivo de sesión cifrada no existe en: ${sessionFilePath}`);
-    }
-    const sessionEncContent = fs.readFileSync(sessionFilePath, 'utf8');
-    if (!sessionEncContent.startsWith('safe:') && !sessionEncContent.startsWith('fallback:')) {
-      throw new Error('El archivo tribu_session.enc no tiene formato cifrado');
-    }
-    console.log('4. Guardado y recuperacion de credenciales seguras (incluyendo tribu_session.enc en su carpeta): CORRECTO');
-
-    // 5. Eliminar cliente de prueba para no ensuciar datos
-    security.clientStorage.delete(testRuc);
     const postDelete = security.clientStorage.getById(testRuc);
     if (postDelete) {
       throw new Error('El cliente de prueba no fue eliminado');
-    }
-    if (fs.existsSync(savedClient.defaultFolder)) {
-      try {
-        fs.rmSync(savedClient.defaultFolder, { recursive: true, force: true });
-      } catch (e) {}
     }
     console.log('5. Limpieza de cliente de prueba: CORRECTO');
 
