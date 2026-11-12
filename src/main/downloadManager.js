@@ -43,19 +43,59 @@ class DownloadManager {
       if (!fs.existsSync(this.activeFolder)) {
         fs.mkdirSync(this.activeFolder, { recursive: true });
       }
+      if (this.currentCategory) {
+        const catDir = path.join(this.activeFolder, this.currentCategory);
+        if (!fs.existsSync(catDir)) {
+          fs.mkdirSync(catDir, { recursive: true });
+        }
+      }
     } catch (e) {
-      console.error('Error creando carpeta base:', e);
+      console.error('Error creando carpetas de destino:', e);
     }
+  }
+
+  _logDebug(msg) {
+    try {
+      const debugFile = path.join(app.getPath('userData'), 'sri_debug.log');
+      fs.appendFileSync(debugFile, `[${new Date().toISOString()}] [DownloadManager] ${msg}\n`);
+    } catch (e) {}
   }
 
   setCategory(category) {
     if (category) {
       this.currentCategory = category;
+      if (this.activeFolder) {
+        try {
+          const catDir = path.join(this.activeFolder, this.currentCategory);
+          if (!fs.existsSync(catDir)) {
+            fs.mkdirSync(catDir, { recursive: true });
+          }
+        } catch (e) {
+          console.error('Error asegurando carpeta de categoria:', e);
+        }
+      }
     }
   }
 
   setExpectedFileInfo(info) {
     this.expectedInfo = info;
+    if (this.activeFolder && info) {
+      try {
+        const cat = this.currentCategory || 'Ventas';
+        const year = info.year || String(new Date().getFullYear());
+        const month = info.month || '01 - Enero';
+        const targetFolder = path.join(this.activeFolder, cat, year, month);
+        if (!fs.existsSync(targetFolder)) {
+          fs.mkdirSync(targetFolder, { recursive: true });
+        }
+      } catch (e) {
+        console.error('Error asegurando carpeta de comprobante esperado:', e);
+      }
+    }
+  }
+
+  getStats() {
+    return { ...this.stats };
   }
 
   _cleanFilename(str) {
@@ -102,13 +142,16 @@ class DownloadManager {
       const ext = path.extname(originalName).toLowerCase();
       const mime = (item.getMimeType() || '').toLowerCase();
       
+      this._logDebug(`will-download recibido: originalName="${originalName}", ext="${ext}", mime="${mime}", currentCategory="${this.currentCategory}"`);
+
       // SOLO DESCARGAR ARCHIVOS XML (validación por extensión, MIME o contexto de comprobante esperado)
       const isXmlExtension = ext === '.xml';
-      const isXmlMime = mime.includes('xml') || mime.includes('octet-stream');
+      const isXmlMime = mime.includes('xml') || mime.includes('octet-stream') || mime.includes('download') || mime.includes('plain');
       const isExpected = Boolean(this.expectedInfo);
       const isAcceptableXml = isXmlExtension || isXmlMime || isExpected || originalName.toLowerCase().includes('.xml');
 
       if (!isAcceptableXml) {
+        this._logDebug(`Descarga cancelada (no es XML aceptable): originalName="${originalName}", mime="${mime}"`);
         item.cancel();
         return;
       }
@@ -222,6 +265,7 @@ class DownloadManager {
         if (state === 'completed') {
           this.stats.completed++;
           this.stats.xmlCount++;
+          this._logDebug(`Descarga completada: ${fullPath}`);
           this._emitToRenderer('download-completed', {
             filename: saveName,
             fullPath: fullPath,
@@ -229,6 +273,7 @@ class DownloadManager {
           });
         } else {
           this.stats.failed++;
+          this._logDebug(`Descarga fallida (${state}): ${saveName}`);
           this._emitToRenderer('download-failed', {
             filename: saveName,
             state: state,

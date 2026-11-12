@@ -68,6 +68,14 @@ dmVentas.setExpectedFileInfo({
 });
 assert(dmVentas.expectedInfo.year === '2026', 'El año de venta debe ser 2026');
 assert(dmVentas.expectedInfo.filename === '2026-10-29 - Factura 001-002-000000008.xml', 'El nombre debe ser fecha y serie');
-console.log('[OK] Formato de guardado de Ventas (Emitidos) validado con éxito');
+const stats = dmVentas.getStats();
+assert(typeof stats.completed === 'number', 'getStats debe devolver completed numérico');
+console.log('[OK] Formato de guardado de Ventas (Emitidos) y getStats validado con éxito');
+
+// 8. Probar script de navegación directa sin error 404
+const navVentasScript = sriAutomation.getNavigateToSriSectionScript('ventas');
+assert(typeof navVentasScript === 'string', 'navVentasScript debe ser string');
+assert(navVentasScript.includes('consultaComprobantesEmitidos.jsf'), 'Debe usar la ruta JSF directa para evitar 404');
+console.log('[OK] Navegación directa a Comprobantes Emitidos JSF validada con éxito');
 
 console.log('--- Todas las pruebas pasaron satisfactoriamente ---');

@@ -289,7 +289,7 @@ function getInspectComprobantesScript() {
         const tds = targetRow.querySelectorAll('td');
         if (xmlColIndex >= 0 && tds.length > xmlColIndex) {
           const cell = tds[xmlColIndex];
-          const el = cell.querySelector('a, button, input[type="image"], img, span') || cell;
+          const el = cell.querySelector('a, button, input[type="image"], img, span, [onclick], [role="button"]') || cell;
           if (el) return el;
         }
       }
@@ -297,7 +297,7 @@ function getInspectComprobantesScript() {
       const tds = targetRow.querySelectorAll('td');
       if (tds.length >= 8) {
         const lastCell = tds[tds.length - 1];
-        const el = lastCell.querySelector('a, button, input[type="image"], img, span') || lastCell;
+        const el = lastCell.querySelector('a, button, input[type="image"], img, span, [onclick], [role="button"]') || lastCell;
         if (el) return el;
       }
       return null;
@@ -554,7 +554,7 @@ function getClickRowXmlScript(rowIndex) {
         const tds = targetRow.querySelectorAll('td');
         if (xmlColIndex >= 0 && tds.length > xmlColIndex) {
           const cell = tds[xmlColIndex];
-          const el = cell.querySelector('a, button, input[type="image"], img, span') || cell;
+          const el = cell.querySelector('a, button, input[type="image"], img, span, [onclick], [role="button"]') || cell;
           if (el) return el;
         }
       }
@@ -562,7 +562,7 @@ function getClickRowXmlScript(rowIndex) {
       const tds = targetRow.querySelectorAll('td');
       if (tds.length >= 8) {
         const lastCell = tds[tds.length - 1];
-        const el = lastCell.querySelector('a, button, input[type="image"], img, span') || lastCell;
+        const el = lastCell.querySelector('a, button, input[type="image"], img, span, [onclick], [role="button"]') || lastCell;
         if (el) return el;
       }
       return null;
@@ -573,15 +573,28 @@ function getClickRowXmlScript(rowIndex) {
       return { success: false, reason: 'Botón XML no encontrado en la fila ' + (idx + 1), clave: clave };
     }
 
-    const clickable = xmlEl.closest('a, button, input, span') || xmlEl;
-    try {
-      clickable.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
-      clickable.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
-      clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-    } catch (e) {}
+    const clickable = xmlEl.closest('a, button, input, [onclick]') || xmlEl;
+    let clickedOk = false;
 
     if (typeof clickable.click === 'function') {
-      clickable.click();
+      try {
+        clickable.click();
+        clickedOk = true;
+      } catch (e) {}
+    }
+
+    if (!clickedOk && typeof clickable.onclick === 'function') {
+      try {
+        clickable.onclick.call(clickable);
+        clickedOk = true;
+      } catch (e) {}
+    }
+
+    if (!clickedOk) {
+      try {
+        clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+        clickedOk = true;
+      } catch (e) {}
     }
 
     return {
@@ -1706,13 +1719,13 @@ function getNavigateToSriSectionScript(target = 'compras') {
   const fn = function(section) {
     const targets = {
       compras: {
-        url: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=57&idGrupo=55',
-        selector: 'a[href*="redireccion=57"]',
+        url: 'https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/pages/consultas/consultaComprobantesRecibidos.jsf',
+        selector: 'a[href*="consultaComprobantesRecibidos"], a[href*="redireccion=57"]',
         headerText: 'FACTURACIÓN ELECTRÓNICA'
       },
       ventas: {
-        url: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=60&idGrupo=58',
-        selector: 'a[href*="redireccion=60"]',
+        url: 'https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/pages/consultas/consultaComprobantesEmitidos.jsf',
+        selector: 'a[href*="consultaComprobantesEmitidos"], a[href*="redireccion=60"]',
         headerText: 'FACTURACIÓN ELECTRÓNICA',
         subText: 'Producción'
       },
@@ -1863,9 +1876,32 @@ function getSetVentasDateAndSearchScript(dateStr) {
     }
     dateInput.value = targetDate;
 
+    // Sincronizar con jQuery UI Datepicker si existe en la página
+    if (window.$ && typeof window.$.fn === 'object' && typeof window.$.fn.datepicker === 'function') {
+      try {
+        window.$(dateInput).datepicker('setDate', targetDate);
+      } catch (e) {}
+    }
+
+    // Sincronizar con el widget de PrimeFaces si está registrado
+    if (window.PrimeFaces && window.PrimeFaces.widgets) {
+      for (const k in window.PrimeFaces.widgets) {
+        const w = window.PrimeFaces.widgets[k];
+        if (w && typeof w.setDate === 'function') {
+          const inp = (w.input && (w.input[0] || w.input)) || (w.jq && w.jq.find('input')[0]);
+          if (inp === dateInput || (inp && inp.id === dateInput.id)) {
+            try {
+              w.setDate(targetDate);
+            } catch (e) {}
+            break;
+          }
+        }
+      }
+    }
+
+    // Disparar eventos nativos para que los observadores de JSF/PrimeFaces detecten el cambio
     dateInput.dispatchEvent(new Event('input', { bubbles: true }));
     dateInput.dispatchEvent(new Event('change', { bubbles: true }));
-    dateInput.dispatchEvent(new Event('blur', { bubbles: true }));
 
     const buttons = Array.from(document.querySelectorAll('button, input[type="submit"], input[type="button"], a.ui-button'));
     const consultBtn = buttons.find(b => {
@@ -1877,14 +1913,11 @@ function getSetVentasDateAndSearchScript(dateStr) {
       return { success: false, reason: 'Botón Consultar no encontrado en el formulario.' };
     }
 
-    try {
-      consultBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
-      consultBtn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
-      consultBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-    } catch (e) {}
-
+    // Clic único y limpio para no saturar o reiniciar la cola AJAX de PrimeFaces
     if (typeof consultBtn.click === 'function') {
       consultBtn.click();
+    } else {
+      consultBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
     }
 
     return { success: true, date: targetDate };

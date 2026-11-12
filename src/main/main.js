@@ -114,6 +114,10 @@ function setupIpcHandlers() {
     return true;
   });
 
+  ipcMain.handle('download:get-stats', async () => {
+    return downloadManager.getStats();
+  });
+
   // Función auxiliar para obtener scripts frescos sin problemas de caché de Node.js
   function getAutomationModule() {
     try {

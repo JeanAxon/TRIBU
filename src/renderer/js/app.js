@@ -1705,11 +1705,46 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // Función auxiliar para esperar respuestas AJAX de PrimeFaces en el portal SRI
+  async function waitForPrimeFacesAjax(webview, maxWaitMs = 8000) {
+    const start = Date.now();
+    await new Promise(r => setTimeout(r, 350));
+    while (Date.now() - start < maxWaitMs) {
+      try {
+        const isBusy = await webview.executeJavaScript(`
+          (function() {
+            var pfBusy = Boolean(window.PrimeFaces && window.PrimeFaces.ajax && window.PrimeFaces.ajax.Queue && !window.PrimeFaces.ajax.Queue.isEmpty());
+            var blockUi = Boolean(document.querySelector('.ui-blockui:not([style*="display: none"]), .ui-blockui-visible, .blockUI'));
+            var loading = Boolean(document.querySelector('.loading, .spinner, [aria-busy="true"]'));
+            return pfBusy || blockUi || loading;
+          })()
+        `);
+        if (!isBusy) {
+          await new Promise(r => setTimeout(r, 250));
+          return true;
+        }
+      } catch (e) {
+        break;
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
+    return false;
+  }
+
   async function startBulkDownloadProcess(allPages = true) {
     if (state.isBulkDownloading || !currentWebview) return;
 
     state.isBulkDownloading = true;
     state.cancelBulkDownload = false;
+
+    if (state.activeClient) {
+      await window.tribuApi.configureDownloadTarget({
+        client: state.activeClient,
+        customFolder: state.activeClient.defaultFolder,
+        organizeByType: false,
+        category: 'Compras'
+      });
+    }
 
     await window.tribuApi.resetDownloadStats();
 
@@ -1783,17 +1818,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             month: rowData.month
           });
 
+          const initialStats = await window.tribuApi.getDownloadStats();
           const getClickRow = window.tribuApi.getClickRowXmlScript || window.tribuApi.getClickRowScript;
           const clickScript = await getClickRow(i);
           const clickRes = await currentWebview.executeJavaScript(clickScript);
 
           if (clickRes && clickRes.success) {
-            totalDownloaded++;
-            progressCompletedCount.textContent = totalDownloaded;
+            // Esperar a que el archivo se descargue y se guarde físicamente
+            const waitStart = Date.now();
+            let downloadedNow = false;
+            while (Date.now() - waitStart < 5000) {
+              await new Promise(r => setTimeout(r, 250));
+              const currentStats = await window.tribuApi.getDownloadStats();
+              if (currentStats.completed > initialStats.completed) {
+                downloadedNow = true;
+                break;
+              }
+              if (currentStats.failed > initialStats.failed) {
+                break;
+              }
+            }
+
+            if (downloadedNow) {
+              totalDownloaded++;
+              progressCompletedCount.textContent = totalDownloaded;
+            }
           }
 
-          // Pausa controlada para permitir que el portal del SRI responda y emita la descarga
-          await new Promise(r => setTimeout(r, 650));
+          await new Promise(r => setTimeout(r, 400));
         }
 
         if (!allPages || state.cancelBulkDownload || pageNum >= totalPagesCount) {
@@ -1868,6 +1920,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     state.isBulkDownloading = true;
     state.cancelBulkDownload = false;
 
+    if (state.activeClient) {
+      await window.tribuApi.configureDownloadTarget({
+        client: state.activeClient,
+        customFolder: state.activeClient.defaultFolder,
+        organizeByType: false,
+        category: 'Ventas'
+      });
+    }
+
     await window.tribuApi.resetDownloadStats();
     await window.tribuApi.setDownloadCategory('Ventas');
 
@@ -1882,7 +1943,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const year = (vInfo && vInfo.year) || new Date().getFullYear();
     const month = (vInfo && vInfo.month) || (new Date().getMonth() + 1);
     const monthName = (vInfo && vInfo.monthName) || 'Mes';
+    const monthPad = String(month).padStart(2, '0');
+    const monthFolder = `${monthPad} - ${monthName}`;
     const daysInMonth = (vInfo && vInfo.daysInMonth) || new Date(year, month, 0).getDate();
+
+    // Asegurar inmediatamente que la carpeta de destino del mes exista en disco
+    await window.tribuApi.setExpectedFileInfo({
+      year: String(year),
+      month: monthFolder
+    });
 
     downloadProgressDrawer.classList.add('active');
     progressBarFill.style.width = '0%';
@@ -1920,8 +1989,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const searchScript = await window.tribuApi.getSetVentasDateAndSearchScript(dateStr);
         await currentWebview.executeJavaScript(searchScript);
 
-        // 2. Esperar respuesta de PrimeFaces AJAX
-        await new Promise(r => setTimeout(r, 2200));
+        // 2. Esperar respuesta reactiva de PrimeFaces AJAX
+        await waitForPrimeFacesAjax(currentWebview, 8000);
 
         // 3. Inspeccionar tabla resultante
         const inspectScript = await window.tribuApi.getInspectScript();
@@ -1932,7 +2001,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (pageInfo && pageInfo.hasTable && totalInDay > 0) {
           progressTotalInBatch.textContent = `${totalInDay} en este día`;
-          progressCurrentFile.textContent = `Día ${dateStr}: ${totalInDay} facturas encontradas. Descargando XMLs...`;
+          progressCurrentFile.textContent = `Día ${dateStr}: ${totalInDay} facturas encontradas. Guardando...`;
 
           for (let i = 0; i < totalInDay; i++) {
             if (state.cancelBulkDownload) break;
@@ -1950,18 +2019,36 @@ document.addEventListener('DOMContentLoaded', async () => {
               claveAcceso: rowData.claveAcceso,
               filename: rowData.filename,
               year: String(year),
-              month: rowData.month
+              month: rowData.month || monthFolder
             });
 
+            const initialStats = await window.tribuApi.getDownloadStats();
             const clickScript = await window.tribuApi.getClickRowXmlScript(i);
             const clickRes = await currentWebview.executeJavaScript(clickScript);
 
             if (clickRes && clickRes.success) {
-              totalDownloaded++;
-              progressCompletedCount.textContent = totalDownloaded;
+              // Esperar a que el archivo se descargue y se guarde físicamente
+              const waitStart = Date.now();
+              let downloadedNow = false;
+              while (Date.now() - waitStart < 5000) {
+                await new Promise(r => setTimeout(r, 250));
+                const currentStats = await window.tribuApi.getDownloadStats();
+                if (currentStats.completed > initialStats.completed) {
+                  downloadedNow = true;
+                  break;
+                }
+                if (currentStats.failed > initialStats.failed) {
+                  break;
+                }
+              }
+
+              if (downloadedNow) {
+                totalDownloaded++;
+                progressCompletedCount.textContent = totalDownloaded;
+              }
             }
 
-            await new Promise(r => setTimeout(r, 700));
+            await new Promise(r => setTimeout(r, 400));
           }
         } else {
           progressTotalInBatch.textContent = '0 en este día';
@@ -2284,10 +2371,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.warn('Aviso en navegacion script SRI, usando fallback directo:', err);
       }
 
-      // Fallback seguro usando el despachador SSO oficial del SRI
+      // Fallback seguro usando las rutas exactas y autenticadas del SRI
       const fallbackUrls = {
-        compras: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=57&idGrupo=55',
-        ventas: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=60&idGrupo=58',
+        compras: 'https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/pages/consultas/consultaComprobantesRecibidos.jsf',
+        ventas: 'https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/pages/consultas/consultaComprobantesEmitidos.jsf',
         declaracion: 'https://srienlinea.sri.gob.ec/sri-declaraciones-web-internet/pages/recepcion/recibirDeclaracion.jsf?identificadorGrupoObligacion=IVA'
       };
       currentWebview.src = fallbackUrls[key] || fallbackUrls.compras;

@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('tribuApi', {
   setDownloadCategory: (category) => ipcRenderer.invoke('download:set-category', category),
   setExpectedFileInfo: (info) => ipcRenderer.invoke('download:set-expected-info', info),
   resetDownloadStats: () => ipcRenderer.invoke('download:reset-stats'),
+  getDownloadStats: () => ipcRenderer.invoke('download:get-stats'),
 
   // Scripts de Automatización SRI
   getLoginScript: (ruc, password) => ipcRenderer.invoke('sri:get-login-script', { ruc, password }),
