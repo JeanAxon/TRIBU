@@ -86,6 +86,22 @@
     </div>
   </div>
 
+  <script>
+    (function() {
+      var splash = document.getElementById('appSplashOverlay');
+      if (splash) {
+        var dismiss = function() {
+          if (!splash || splash.dataset.dismissed) return;
+          splash.dataset.dismissed = 'true';
+          splash.classList.add('fade-out');
+          setTimeout(function() { splash.style.display = 'none'; }, 420);
+        };
+        setTimeout(dismiss, 1850);
+        splash.addEventListener('click', dismiss);
+      }
+    })();
+  </script>
+
   <!-- UN SOLO ENCABEZADO PRINCIPAL (FIJO, CENTRADO Y PASIVO) -->
   <header class="app-header">
     <div class="header-left-group">

@@ -2077,7 +2077,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           })()
         `);
       } catch (e) {}
-      }
 
       if (state.cancelBulkDownload) {
         progressDrawerTitle.textContent = 'Descarga de Ventas Detenida';

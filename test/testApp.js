@@ -78,4 +78,20 @@ assert(typeof navVentasScript === 'string', 'navVentasScript debe ser string');
 assert(navVentasScript.includes('redireccion=60'), 'Debe usar la ruta autenticada oficial redireccion=60 para evitar 404');
 console.log('[OK] Navegación directa a Comprobantes Emitidos autenticada validada con éxito');
 
+// 9. Validar sintaxis y compilación de scripts del Renderer
+const vm = require('vm');
+const fs = require('fs');
+const rendererScripts = [
+  'src/renderer/js/app.js',
+  'src/renderer/js/modules/atsModuleView.js',
+  'src/renderer/js/modules/ivaModuleView.js'
+];
+for (const scriptPath of rendererScripts) {
+  const code = fs.readFileSync(scriptPath, 'utf8');
+  assert.doesNotThrow(() => {
+    new vm.Script(code, { filename: scriptPath });
+  }, `El script ${scriptPath} debe compilar sin errores de sintaxis`);
+}
+console.log('[OK] Todos los scripts del Renderer compilan limpiamente sin errores de sintaxis');
+
 console.log('--- Todas las pruebas pasaron satisfactoriamente ---');
