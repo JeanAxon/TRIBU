@@ -226,6 +226,52 @@ assert.strictEqual(monthsAdded[0].value, '02 - Febrero', 'El mes descargado debe
 assert.strictEqual(view.filterMonth.value, '02 - Febrero', 'El valor seleccionado debe ser 02 - Febrero');
 console.log('[OK] AtsModuleView: Selectores de año y mes pueblan únicamente meses descargados');
 
+// 8. Probar generación y validación de ATS en CEROS (sin movimiento)
+const valCeros = atsModule.validateAtsData({
+  client: { ruc: '1790012345001' },
+  year: '2026',
+  month: '03 - Marzo',
+  compras: [],
+  ventas: []
+});
+assert.strictEqual(valCeros.isValid, true, 'ATS en ceros debe ser técnicamente válido');
+assert.strictEqual(valCeros.summary.sinMovimiento, true, 'Debe marcarse como sinMovimiento');
+assert.strictEqual(valCeros.summary.totalCompras, 0, 'Cero compras');
+assert.strictEqual(valCeros.summary.totalVentas, 0, 'Cero ventas');
+
+const cerosGenResult = generateAtsXml({
+  client: {
+    ruc: '1790012345001',
+    razonSocial: 'EMPRESA SIN MOVIMIENTO CIA. LTDA.',
+    defaultFolder: clientFolder
+  },
+  year: '2026',
+  month: '03 - Marzo',
+  compras: [],
+  ventas: []
+});
+
+assert.strictEqual(cerosGenResult.success, true, 'Generación de ATS en ceros debe ser exitosa');
+assert(fs.existsSync(cerosGenResult.filePath), 'El archivo XML en ceros debe existir');
+assert(fs.existsSync(cerosGenResult.zipFilePath), 'El archivo ZIP oficial AT032026.zip debe existir');
+
+const xmlCerosContent = fs.readFileSync(cerosGenResult.filePath, 'utf8');
+assert(xmlCerosContent.includes('<totalVentas>0.00</totalVentas>'), 'totalVentas debe ser 0.00');
+assert(xmlCerosContent.includes('<codEstab>001</codEstab>'), 'codEstab debe ser 001');
+assert(xmlCerosContent.includes('<ventasEst>0.00</ventasEst>'), 'ventasEst debe ser 0.00');
+assert(!xmlCerosContent.includes('<compras>'), 'No debe incluir sección compras en ceros');
+assert(!xmlCerosContent.includes('<ventas>'), 'No debe incluir sección ventas en ceros');
+console.log('[OK] generateAtsXml y validateAtsData: ATS en CEROS (sin movimiento) generado y empaquetado en AT032026.zip');
+
+// 9. Probar selector con checkbox "Todos los meses" activado en AtsModuleView
+optionsCreated.length = 0;
+view.chkShowAllMonthsAts = { checked: true };
+view._updateMonthSelector(false);
+const allMonthsAdded = optionsCreated.filter(o => o.target === 'atsFilterMonth');
+assert.strictEqual(allMonthsAdded.length, 12, 'Debe incluir los 12 meses cuando chkShowAllMonthsAts está activo');
+assert(allMonthsAdded.some(m => m.textContent.includes('(En cero)')), 'Meses sin comprobantes deben rotularse (En cero)');
+console.log('[OK] AtsModuleView: Modo "Todos los meses" despliega los 12 meses permitiendo selección en ceros');
+
 // Limpiar archivos temporales
 try {
   fs.rmSync(tmpDir, { recursive: true, force: true });

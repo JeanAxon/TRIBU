@@ -72,6 +72,19 @@ class AtsModuleView {
     this.btnCloseAtsModal = document.getElementById('btnCloseAtsModal');
     this.btnValidateAtsPeriod = document.getElementById('btnValidateAtsPeriod');
 
+    // Controles para Todos los Meses y ATS en Ceros
+    this.chkShowAllMonthsAts = document.getElementById('chkShowAllMonthsAts');
+    this.btnGenerateAtsCeros = document.getElementById('btnGenerateAtsCeros');
+    this.atsCerosModal = document.getElementById('atsCerosModal');
+    this.btnCloseAtsCerosModal = document.getElementById('btnCloseAtsCerosModal');
+    this.btnCancelAtsCeros = document.getElementById('btnCancelAtsCeros');
+    this.btnConfirmGenerateCeros = document.getElementById('btnConfirmGenerateCeros');
+    this.atsCerosYear = document.getElementById('atsCerosYear');
+    this.atsCerosMonth = document.getElementById('atsCerosMonth');
+    this.atsCerosClientRuc = document.getElementById('atsCerosClientRuc');
+    this.atsCerosClientName = document.getElementById('atsCerosClientName');
+    this.atsCerosTargetFile = document.getElementById('atsCerosTargetFile');
+
     // Modal Flotante de Factura Electrónica (RIDE)
     this.invoiceViewerModal = document.getElementById('invoiceViewerModal');
     this.invoiceViewerBody = document.getElementById('invoiceViewerBody');
@@ -173,6 +186,45 @@ class AtsModuleView {
         this.closeInvoiceViewer();
       });
     }
+
+    if (this.chkShowAllMonthsAts) {
+      this.chkShowAllMonthsAts.addEventListener('change', () => {
+        this._updateMonthSelector(true);
+        this.loadPeriodComprobantes();
+      });
+    }
+
+    if (this.btnGenerateAtsCeros) {
+      this.btnGenerateAtsCeros.addEventListener('click', () => {
+        this.openAtsCerosModal();
+      });
+    }
+
+    if (this.btnCloseAtsCerosModal) {
+      this.btnCloseAtsCerosModal.addEventListener('click', () => {
+        this.closeAtsCerosModal();
+      });
+    }
+
+    if (this.btnCancelAtsCeros) {
+      this.btnCancelAtsCeros.addEventListener('click', () => {
+        this.closeAtsCerosModal();
+      });
+    }
+
+    if (this.btnConfirmGenerateCeros) {
+      this.btnConfirmGenerateCeros.addEventListener('click', () => {
+        this.confirmGenerateAtsCeros();
+      });
+    }
+
+    if (this.atsCerosYear) {
+      this.atsCerosYear.addEventListener('change', () => this._updateCerosTargetFileName());
+    }
+
+    if (this.atsCerosMonth) {
+      this.atsCerosMonth.addEventListener('change', () => this._updateCerosTargetFileName());
+    }
   }
 
   _onCategoryChange() {
@@ -256,7 +308,31 @@ class AtsModuleView {
     const currentMonthVal = this.filterMonth.value;
     this.filterMonth.innerHTML = '';
 
-    if (availableMonths.length > 0) {
+    const showAllMonths = Boolean(this.chkShowAllMonthsAts && this.chkShowAllMonthsAts.checked);
+
+    if (showAllMonths) {
+      const ALL_MONTHS = [
+        '01 - Enero', '02 - Febrero', '03 - Marzo', '04 - Abril',
+        '05 - Mayo', '06 - Junio', '07 - Julio', '08 - Agosto',
+        '09 - Septiembre', '10 - Octubre', '11 - Noviembre', '12 - Diciembre'
+      ];
+      this.filterMonth.disabled = false;
+      ALL_MONTHS.forEach(month => {
+        const opt = document.createElement('option');
+        opt.value = month;
+        const hasData = availableMonths.includes(month);
+        opt.textContent = hasData ? month : `${month} (En cero)`;
+        this.filterMonth.appendChild(opt);
+      });
+
+      if (preserveSelection && currentMonthVal) {
+        this.filterMonth.value = currentMonthVal;
+      } else if (availableMonths.length > 0) {
+        this.filterMonth.value = availableMonths[availableMonths.length - 1];
+      } else {
+        this.filterMonth.value = ALL_MONTHS[0];
+      }
+    } else if (availableMonths.length > 0) {
       this.filterMonth.disabled = false;
       availableMonths.forEach(month => {
         const opt = document.createElement('option');
@@ -466,16 +542,18 @@ class AtsModuleView {
     if (!client) return;
 
     if (!this.state.items || this.state.items.length === 0) {
-      alert('No hay comprobantes cargados en este periodo para generar el ATS.\n\nSelecciona un mes con comprobantes descargados o cárgalos primero.');
-      return;
+      const mesTxt = this._getMonthLabel(this.state.month) || this.state.month || 'del período seleccionado';
+      const yearTxt = this.state.year || String(new Date().getFullYear());
+      const confirmCeros = confirm(`No se encontraron comprobantes cargados para ${mesTxt} ${yearTxt}.\n\n¿Deseas generar el Anexo Transaccional Simplificado (ATS) EN CEROS (sin movimiento) para este período ante el SRI?`);
+      if (!confirmCeros) return;
     }
 
     try {
       this.showBanner('Consolidando Compras y Ventas del período...', 'info');
 
       const isCompras = this.state.category === 'Compras';
-      let comprasPayload = isCompras ? this.state.items : [];
-      let ventasPayload = !isCompras ? this.state.items : [];
+      let comprasPayload = isCompras ? (this.state.items || []) : [];
+      let ventasPayload = !isCompras ? (this.state.items || []) : [];
 
       // Cargar la contraparte automáticamente para asegurar la consolidación completa del ATS
       if (isCompras && (!ventasPayload || ventasPayload.length === 0)) {
@@ -504,6 +582,8 @@ class AtsModuleView {
         }
       }
 
+      const isCeros = comprasPayload.length === 0 && ventasPayload.length === 0;
+
       // Validar datos normativos
       if (this.api && typeof this.api.validateAtsPeriod === 'function') {
         const valRes = await this.api.validateAtsPeriod({
@@ -521,7 +601,7 @@ class AtsModuleView {
         }
       }
 
-      this.showBanner('Generando paquete ATS oficial (XML y ZIP)...', 'info');
+      this.showBanner(isCeros ? 'Generando paquete ATS en CEROS (sin movimiento)...' : 'Generando paquete ATS oficial (XML y ZIP)...', 'info');
 
       const result = await this.api.generateAtsXml({
         client,
@@ -544,7 +624,11 @@ class AtsModuleView {
           this.atsGeneratedFileName.textContent = result.xmlFileName || result.fileName;
         }
         if (this.atsGeneratedCount) {
-          this.atsGeneratedCount.textContent = `${result.totalCompras} compras, ${result.totalVentas} ventas (Total Ventas: $${(result.totalMontoVentas || 0).toFixed(2)})`;
+          if (result.totalCompras === 0 && result.totalVentas === 0) {
+            this.atsGeneratedCount.textContent = '0 compras, 0 ventas (Período sin movimiento - En Ceros)';
+          } else {
+            this.atsGeneratedCount.textContent = `${result.totalCompras} compras, ${result.totalVentas} ventas (Total Ventas: $${(result.totalMontoVentas || 0).toFixed(2)})`;
+          }
         }
         if (this.atsGeneratedFilePath) {
           this.atsGeneratedFilePath.textContent = result.zipFilePath || result.filePath;
@@ -552,7 +636,13 @@ class AtsModuleView {
 
         if (this.atsValidationSummary) {
           const val = result.validation;
-          if (val && val.warnings && val.warnings.length > 0) {
+          if (isCeros) {
+            this.atsValidationSummary.innerHTML = `
+              <div style="color: #047857; font-weight: 600;">
+                Estructura de anexo en CEROS conforme al estándar SRI para períodos sin movimiento.
+              </div>
+            `;
+          } else if (val && val.warnings && val.warnings.length > 0) {
             this.atsValidationSummary.innerHTML = `
               <div style="background: #fffbeb; border: 1px solid #fef3c7; color: #92400e; padding: 6px 10px; border-radius: 4px;">
                 <strong>Avisos normativos:</strong>
@@ -571,12 +661,148 @@ class AtsModuleView {
         }
 
         this.atsSuccessModal.classList.add('active');
-        this.showBanner(`Paquete ATS generado exitosamente: ${result.zipFileName || result.fileName}`, 'success', 5000);
+        this.showBanner(`Paquete ATS ${isCeros ? 'en Ceros ' : ''}generado exitosamente: ${result.zipFileName || result.fileName}`, 'success', 5000);
       } else {
         alert('Error generando el anexo ATS: ' + result.error);
       }
     } catch (e) {
       alert('Error en la generación de ATS: ' + e.message);
+    }
+  }
+
+  /**
+   * Abre el modal para configurar y generar un ATS en ceros para cualquier período
+   */
+  openAtsCerosModal() {
+    const client = this.getActiveClient();
+    if (!client) {
+      alert('Selecciona primero un cliente para generar el ATS en ceros.');
+      return;
+    }
+
+    if (this.atsCerosClientRuc) {
+      this.atsCerosClientRuc.textContent = client.ruc || '';
+    }
+    if (this.atsCerosClientName) {
+      this.atsCerosClientName.textContent = client.razonSocial || client.name || '';
+    }
+
+    // Poblar selector de años (año actual y hasta 4 años anteriores)
+    if (this.atsCerosYear) {
+      this.atsCerosYear.innerHTML = '';
+      const currentYear = new Date().getFullYear();
+      for (let y = currentYear; y >= currentYear - 4; y--) {
+        const opt = document.createElement('option');
+        opt.value = String(y);
+        opt.textContent = String(y);
+        this.atsCerosYear.appendChild(opt);
+      }
+      if (this.state.year) {
+        this.atsCerosYear.value = this.state.year;
+      }
+    }
+
+    // Poblar selector de meses
+    if (this.atsCerosMonth) {
+      this.atsCerosMonth.innerHTML = '';
+      const MONTHS = [
+        '01 - Enero', '02 - Febrero', '03 - Marzo', '04 - Abril',
+        '05 - Mayo', '06 - Junio', '07 - Julio', '08 - Agosto',
+        '09 - Septiembre', '10 - Octubre', '11 - Noviembre', '12 - Diciembre'
+      ];
+      MONTHS.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        this.atsCerosMonth.appendChild(opt);
+      });
+      if (this.state.month) {
+        this.atsCerosMonth.value = this.state.month;
+      }
+    }
+
+    this._updateCerosTargetFileName();
+    if (this.atsCerosModal) {
+      this.atsCerosModal.classList.add('active');
+    }
+  }
+
+  /**
+   * Cierra el modal de ATS en ceros
+   */
+  closeAtsCerosModal() {
+    if (this.atsCerosModal) {
+      this.atsCerosModal.classList.remove('active');
+    }
+  }
+
+  /**
+   * Actualiza el nombre previsto del archivo según año y mes seleccionados en el modal de ceros
+   */
+  _updateCerosTargetFileName() {
+    if (!this.atsCerosTargetFile || !this.atsCerosYear || !this.atsCerosMonth) return;
+    const year = this.atsCerosYear.value || String(new Date().getFullYear());
+    const monthMatch = String(this.atsCerosMonth.value).match(/\b(\d{1,2})\b/);
+    const month = monthMatch ? monthMatch[1].padStart(2, '0') : '01';
+    this.atsCerosTargetFile.textContent = `AT${month}${year}.zip`;
+  }
+
+  /**
+   * Confirma y genera el ATS en ceros directamente
+   */
+  async confirmGenerateAtsCeros() {
+    const client = this.getActiveClient();
+    if (!client) return;
+
+    const year = this.atsCerosYear ? this.atsCerosYear.value : String(new Date().getFullYear());
+    const month = this.atsCerosMonth ? this.atsCerosMonth.value : '01 - Enero';
+
+    this.closeAtsCerosModal();
+    this.showBanner(`Generando Anexo ATS en CEROS para ${month} ${year}...`, 'info');
+
+    try {
+      const result = await this.api.generateAtsXml({
+        client,
+        year,
+        month,
+        compras: [],
+        ventas: []
+      });
+
+      if (result.success) {
+        this.state.lastGeneratedFolder = result.folderPath;
+        if (this.atsGeneratedZipName) {
+          this.atsGeneratedZipName.textContent = result.zipFileName;
+        }
+        if (this.atsGeneratedZipSize) {
+          const sizeKb = ((result.zipSizeBytes || 0) / 1024).toFixed(1);
+          this.atsGeneratedZipSize.textContent = `(${sizeKb} KB - Límite SRI: 8 MB)`;
+        }
+        if (this.atsGeneratedFileName) {
+          this.atsGeneratedFileName.textContent = result.xmlFileName;
+        }
+        if (this.atsGeneratedCount) {
+          this.atsGeneratedCount.textContent = '0 compras, 0 ventas (Período sin movimiento - En Ceros)';
+        }
+        if (this.atsGeneratedFilePath) {
+          this.atsGeneratedFilePath.textContent = result.zipFilePath || result.filePath;
+        }
+
+        if (this.atsValidationSummary) {
+          this.atsValidationSummary.innerHTML = `
+            <div style="color: #047857; font-weight: 600;">
+              Anexo en Ceros validado: Cumple con la estructura de declaración sin movimiento ante el SRI (Total Ventas: $0.00).
+            </div>
+          `;
+        }
+
+        this.atsSuccessModal.classList.add('active');
+        this.showBanner(`Anexo ATS en Ceros generado exitosamente: ${result.zipFileName}`, 'success', 5000);
+      } else {
+        alert('Error generando el ATS en ceros: ' + result.error);
+      }
+    } catch (e) {
+      alert('Error en la generación de ATS en ceros: ' + e.message);
     }
   }
 

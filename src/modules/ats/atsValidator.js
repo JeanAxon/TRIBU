@@ -205,6 +205,7 @@ function validateAtsData({ client, year, month, compras = [], ventas = [] }) {
     errors,
     warnings,
     summary: {
+      sinMovimiento: (compras.length === 0 && ventas.length === 0),
       totalCompras: compras.length,
       totalVentas: ventas.length,
       montoTotalCompras: parseFloat(totalMontoCompras.toFixed(2)),

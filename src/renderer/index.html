@@ -342,11 +342,17 @@
               <select id="atsFilterMonth" class="ats-select"></select>
             </div>
 
+            <label class="ats-checkbox-label" style="display: flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer; color: var(--text-secondary); margin-left: 2px;" title="Permite seleccionar cualquier mes del año para consultar o declarar en ceros">
+              <input type="checkbox" id="chkShowAllMonthsAts" style="cursor: pointer;">
+              <span>Todos los meses</span>
+            </label>
+
             <button id="btnLoadPeriodXmls" class="btn btn-secondary">Cargar Comprobantes</button>
             <button id="btnOpenCurrentPeriodFolder" class="btn btn-secondary" title="Abrir carpeta del periodo en el explorador de archivos">Abrir Carpeta</button>
           </div>
 
           <div class="ats-actions-group">
+            <button id="btnGenerateAtsCeros" class="btn btn-secondary" title="Generar Anexo ATS sin movimientos (en ceros) para cualquier período">ATS en Ceros</button>
             <button id="btnValidateAtsPeriod" class="btn btn-secondary" title="Verificar que los comprobantes cumplan con todas las reglas técnicas del SRI">Validar Período</button>
             <button id="btnExportCsv" class="btn btn-secondary">Exportar a Excel (CSV)</button>
             <button id="btnGenerateAtsXml" class="btn btn-success font-bold" title="Generar archivo XML y paquete ZIP oficial para el SRI">Generar ATS (ZIP)</button>
@@ -964,6 +970,52 @@
         <button id="btnCheckErroresSri" class="btn btn-secondary" title="Consultar archivo de errores en portal SRI">Errores SRI</button>
         <button id="btnUploadAtsToSri" class="btn btn-primary" title="Abrir recepción de Anexos en el portal del SRI">Cargar ATS en SRI</button>
         <button id="btnAcceptAtsModal" class="btn btn-secondary">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GENERACIÓN ATS EN CEROS (SIN MOVIMIENTO) -->
+  <div id="atsCerosModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="atsCerosModalTitle">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 id="atsCerosModalTitle" class="modal-title">Generar Anexo ATS en Ceros</h3>
+        <button id="btnCloseAtsCerosModal" class="modal-close-btn" aria-label="Cerrar modal ATS en ceros">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="ats-success-badge-box" style="background: #eff6ff; border-left-color: #2563eb;">
+          <div style="color: #1e40af; font-weight: 700; font-size: 14px; margin-bottom: 4px;">Período Tributario Sin Movimiento</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">Genera el archivo XML y ZIP oficial para contribuyentes obligados al ATS que no registran compras ni ventas en el período.</div>
+        </div>
+
+        <div style="font-size: 13px; line-height: 1.6; color: var(--text-main); margin-top: 12px;">
+          <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+            <div style="flex: 1;">
+              <label for="atsCerosYear" style="display: block; font-weight: 600; margin-bottom: 4px;">Año:</label>
+              <select id="atsCerosYear" class="ats-select" style="width: 100%;"></select>
+            </div>
+            <div style="flex: 1;">
+              <label for="atsCerosMonth" style="display: block; font-weight: 600; margin-bottom: 4px;">Mes:</label>
+              <select id="atsCerosMonth" class="ats-select" style="width: 100%;"></select>
+            </div>
+          </div>
+
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; font-size: 12px;">
+            <p style="margin: 0 0 4px 0;"><strong>RUC Informante:</strong> <span id="atsCerosClientRuc"></span></p>
+            <p style="margin: 0 0 4px 0;"><strong>Razón Social:</strong> <span id="atsCerosClientName"></span></p>
+            <p style="margin: 0 0 4px 0;"><strong>Total Ventas:</strong> $0.00</p>
+            <p style="margin: 0 0 4px 0;"><strong>Compras y Retenciones:</strong> Sin registros</p>
+            <p style="margin: 0;"><strong>Paquete oficial:</strong> <code id="atsCerosTargetFile" style="font-weight: 700; color: #1e40af;">ATmmaaaa.zip</code></p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCancelAtsCeros" class="btn btn-secondary">Cancelar</button>
+        <button id="btnConfirmGenerateCeros" class="btn btn-primary font-bold">Generar ATS en Ceros (ZIP)</button>
       </div>
     </div>
   </div>
