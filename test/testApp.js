@@ -75,7 +75,7 @@ console.log('[OK] Formato de guardado de Ventas (Emitidos) y getStats validado c
 // 8. Probar script de navegación directa sin error 404
 const navVentasScript = sriAutomation.getNavigateToSriSectionScript('ventas');
 assert(typeof navVentasScript === 'string', 'navVentasScript debe ser string');
-assert(navVentasScript.includes('consultaComprobantesEmitidos.jsf'), 'Debe usar la ruta JSF directa para evitar 404');
-console.log('[OK] Navegación directa a Comprobantes Emitidos JSF validada con éxito');
+assert(navVentasScript.includes('redireccion=60'), 'Debe usar la ruta autenticada oficial redireccion=60 para evitar 404');
+console.log('[OK] Navegación directa a Comprobantes Emitidos autenticada validada con éxito');
 
 console.log('--- Todas las pruebas pasaron satisfactoriamente ---');

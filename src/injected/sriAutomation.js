@@ -241,13 +241,13 @@ function getInspectComprobantesScript() {
     // Detección precisa de categoría Ventas vs Compras
     const url = window.location.href.toLowerCase();
     const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, .ui-panel-title, .titulo, .header, legend, div'));
-    let isEmitidos = url.includes('emitid') || Boolean(document.querySelector('form[action*="emitid"], [id*="emitid"]'));
+    let isEmitidos = url.includes('emitid') || Boolean(document.querySelector('form[action*="emitid"], [id*="emitid"], [id*="tablaCompEmitidos"], [id*="calendarFechaDesde"]'));
     let isRecibidos = url.includes('recibid') || Boolean(document.querySelector('form[action*="recibid"], [id*="recibid"]'));
 
     if (!isEmitidos && !isRecibidos) {
       for (const h of headings) {
         const txt = (h.innerText || '').toLowerCase();
-        if (txt.includes('comprobantes emitidos') || txt.includes('emitidos autorizados')) {
+        if (txt.includes('comprobantes emitidos') || txt.includes('emitidos autorizados') || txt.includes('comprobantes electrónicos emitidos')) {
           isEmitidos = true;
           break;
         }
@@ -312,6 +312,11 @@ function getInspectComprobantesScript() {
       let tipoComp = 'Factura';
       let numComp = '';
 
+      let valorSinImpuestos = '0.00';
+      let montoIva = '0.00';
+      let importeTotal = '0.00';
+      let fechaHoraAutorizacion = '';
+
       if (category === 'Ventas') {
         // En Emitidos: cells[1] = "Factura 001-002-000000008"
         if (cells.length > 1) {
@@ -323,6 +328,18 @@ function getInspectComprobantesScript() {
           } else {
             tipoComp = tipoSerie;
           }
+        }
+        if (cells.length > 3) {
+          fechaHoraAutorizacion = cells[3].innerText.trim();
+        }
+        if (cells.length > 5) {
+          valorSinImpuestos = cells[5].innerText.trim();
+        }
+        if (cells.length > 6) {
+          montoIva = cells[6].innerText.trim();
+        }
+        if (cells.length > 7) {
+          importeTotal = cells[7].innerText.trim();
         }
       } else {
         // En Recibidos: cells[1] = RUC + Razón Social del Proveedor
@@ -389,20 +406,25 @@ function getInspectComprobantesScript() {
       }
 
       const xmlBtn = findXmlEl(row, mainTable);
-      if (xmlBtn) xmlCount++;
+      const hasXmlValid = category === 'Ventas' ? (clave.length >= 49 || Boolean(cleanSerie)) : Boolean(xmlBtn);
+      if (hasXmlValid) xmlCount++;
 
       return {
         index: idx,
         fechaEmision: formattedDate,
+        fechaHoraAutorizacion: fechaHoraAutorizacion,
         razonSocial: cleanRazon,
         tipoComprobante: tipoComp,
         numeroComprobante: numComp,
         tipoSerie: cleanSerie,
         claveAcceso: clave,
+        valorSinImpuestos: valorSinImpuestos,
+        montoIva: montoIva,
+        importeTotal: importeTotal,
         year: year,
         month: monthFolder,
         filename: filename,
-        hasXml: Boolean(xmlBtn)
+        hasXml: hasXmlValid
       };
     });
 
@@ -1719,15 +1741,20 @@ function getNavigateToSriSectionScript(target = 'compras') {
   const fn = function(section) {
     const targets = {
       compras: {
-        url: 'https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/pages/consultas/consultaComprobantesRecibidos.jsf',
-        selector: 'a[href*="consultaComprobantesRecibidos"], a[href*="redireccion=57"]',
+        url: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=57&idGrupo=55',
+        selector: 'a[href*="redireccion=57"], a[href*="consultaComprobantesRecibidos"]',
         headerText: 'FACTURACIÓN ELECTRÓNICA'
       },
       ventas: {
-        url: 'https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/pages/consultas/consultaComprobantesEmitidos.jsf',
-        selector: 'a[href*="consultaComprobantesEmitidos"], a[href*="redireccion=60"]',
+        url: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=60&idGrupo=58',
+        selector: 'a[href*="redireccion=60"], a[href*="consultaComprobantesEmitidos"]',
         headerText: 'FACTURACIÓN ELECTRÓNICA',
         subText: 'Producción'
+      },
+      ats: {
+        url: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=187&idGrupo=182',
+        selector: 'a[href*="redireccion=187"], a[href*="EnvioConsulta"]',
+        headerText: 'ANEXOS'
       },
       declaracion: {
         url: 'https://srienlinea.sri.gob.ec/sri-declaraciones-web-internet/pages/recepcion/recibirDeclaracion.jsf?identificadorGrupoObligacion=IVA',
@@ -1739,24 +1766,33 @@ function getNavigateToSriSectionScript(target = 'compras') {
     const cfg = targets[section] || targets.compras;
 
     try {
-      // 1. Si estamos en el portal Angular (sri-en-linea)
+      // 1. Si ya estamos en menu.jsf y el objetivo es ventas, ingresar a comprobantes emitidos
+      if (section === 'ventas' && window.location.href.includes('menu.jsf')) {
+        const emitLink = Array.from(document.querySelectorAll('a')).find(a => {
+          const t = (a.innerText || '').toLowerCase();
+          return t.includes('comprobantes electrónicos emitidos') || t.includes('comprobantes electronicos emitidos');
+        });
+        if (emitLink) {
+          emitLink.click();
+          return { success: true, method: 'menu_jsf_click', section };
+        }
+      }
+
+      // 2. Si estamos en el portal Angular (sri-en-linea)
       const isAngular = window.location.href.includes('/sri-en-linea');
       if (isAngular) {
-        // A) Buscar si el enlace directo ya esta visible en el DOM
         let link = document.querySelector(cfg.selector);
         if (link) {
           link.click();
           return { success: true, method: 'dom_direct_click', section };
         }
 
-        // B) Si el menu lateral esta contraido, abrirlo con el boton de hamburguesa
         const menuContraido = document.getElementById('sri-menu-contraido');
         if (menuContraido && menuContraido.offsetParent !== null) {
           const btnMenu = document.getElementById('sri-menu-desplegado-btn');
           if (btnMenu) btnMenu.click();
         }
 
-        // C) Desplegar encabezado del grupo (ej. FACTURACION ELECTRONICA)
         if (cfg.headerText) {
           const headers = Array.from(document.querySelectorAll('a.ui-panelmenu-header-link, .ui-panelmenu-header a, .ui-panelmenu-header'));
           const targetHeader = headers.find(h => (h.innerText || '').toUpperCase().includes(cfg.headerText.toUpperCase()));
@@ -1765,7 +1801,6 @@ function getNavigateToSriSectionScript(target = 'compras') {
           }
         }
 
-        // D) Si requiere subgrupo (ej. Produccion para ventas)
         if (cfg.subText) {
           const menuLinks = Array.from(document.querySelectorAll('.ui-menuitem-link, a'));
           const subLink = menuLinks.find(el => (el.innerText || '').trim().toLowerCase() === cfg.subText.toLowerCase());
@@ -1774,7 +1809,6 @@ function getNavigateToSriSectionScript(target = 'compras') {
           }
         }
 
-        // E) Reintentar clic en el enlace tras abrir el arbol
         link = document.querySelector(cfg.selector);
         if (link) {
           link.click();
@@ -1782,7 +1816,7 @@ function getNavigateToSriSectionScript(target = 'compras') {
         }
       }
 
-      // 2. Si no es Angular o no se encontro el elemento, navegar mediante SSO router en ventana autenticada
+      // 3. Navegar mediante SSO router oficial en ventana autenticada
       window.location.href = cfg.url;
       return { success: true, method: 'window_location', url: cfg.url };
     } catch (e) {
@@ -1799,18 +1833,19 @@ function getVentasFilterInfoScript() {
   const fn = function() {
     const url = window.location.href.toLowerCase();
     const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, .ui-panel-title, .titulo, .header, legend, div'));
-    let isVentas = url.includes('emitid') || Boolean(document.querySelector('form[action*="emitid"], [id*="emitid"]'));
+    let isVentas = url.includes('emitid') || Boolean(document.querySelector('form[action*="emitid"], [id*="emitid"], [id*="tablaCompEmitidos"], [id*="calendarFechaDesde"]'));
     if (!isVentas) {
       for (const h of headings) {
         const txt = (h.innerText || '').toLowerCase();
-        if (txt.includes('comprobantes emitidos') || txt.includes('emitidos autorizados')) {
+        if (txt.includes('comprobantes emitidos') || txt.includes('emitidos autorizados') || txt.includes('comprobantes electrónicos emitidos')) {
           isVentas = true;
           break;
         }
       }
     }
 
-    const dateInput = document.querySelector('input[id*="fechaEmision" i], input[id*="fecha" i], input.hasDatepicker, input[name*="fecha" i]');
+    const dateInput = document.getElementById('frmPrincipal:calendarFechaDesde_input') ||
+      document.querySelector('input[id*="calendarFechaDesde" i], input[id*="fechaEmision" i], input[id*="fecha" i], input.hasDatepicker, input[name*="fecha" i]');
     const rawVal = dateInput ? (dateInput.value || '').trim() : '';
 
     let day = null;
@@ -1863,9 +1898,10 @@ function getVentasFilterInfoScript() {
 // Script para cambiar la fecha de emisión en Ventas y presionar Consultar
 function getSetVentasDateAndSearchScript(dateStr) {
   const fn = function(targetDate) {
-    const dateInput = document.querySelector('input[id*="fechaEmision" i], input[id*="fecha" i], input.hasDatepicker, input[name*="fecha" i]');
+    const dateInput = document.getElementById('frmPrincipal:calendarFechaDesde_input') ||
+      document.querySelector('input[id*="calendarFechaDesde" i], input[id*="fechaEmision" i], input[id*="fecha" i], input.hasDatepicker, input[name*="fecha" i]');
     if (!dateInput) {
-      return { success: false, reason: 'Campo de fecha de emisión no encontrado en el formulario.' };
+      return { success: false, reason: 'Campo de fecha de emisión no encontrado en el formulario de ventas.' };
     }
 
     const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
@@ -1903,11 +1939,11 @@ function getSetVentasDateAndSearchScript(dateStr) {
     dateInput.dispatchEvent(new Event('input', { bubbles: true }));
     dateInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-    const buttons = Array.from(document.querySelectorAll('button, input[type="submit"], input[type="button"], a.ui-button'));
-    const consultBtn = buttons.find(b => {
-      const txt = (b.innerText || b.value || '').toLowerCase().trim();
-      return txt === 'consultar' || txt.includes('consultar');
-    });
+    const consultBtn = document.getElementById('frmPrincipal:btnConsultar') ||
+      Array.from(document.querySelectorAll('button, input[type="submit"], input[type="button"], a.ui-button')).find(b => {
+        const txt = (b.innerText || b.value || '').toLowerCase().trim();
+        return txt === 'consultar' || txt.includes('consultar');
+      });
 
     if (!consultBtn) {
       return { success: false, reason: 'Botón Consultar no encontrado en el formulario.' };

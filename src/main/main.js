@@ -188,6 +188,98 @@ function setupIpcHandlers() {
     return getAutomationModule().getSetVentasDateAndSearchScript(dateStr);
   });
 
+  ipcMain.handle('sri:save-emitted-invoice-xml', async (event, { client, year, month, filename, invoice }) => {
+    try {
+      if (!client || !client.defaultFolder) {
+        throw new Error('Cliente o carpeta predeterminada no configurada.');
+      }
+
+      const yearStr = String(year || new Date().getFullYear());
+      const monthStr = String(month || 'Mes');
+      const targetFolder = path.join(client.defaultFolder, 'Ventas', yearStr, monthStr);
+      if (!fs.existsSync(targetFolder)) {
+        fs.mkdirSync(targetFolder, { recursive: true });
+      }
+
+      const safeFilename = filename && filename.toLowerCase().endsWith('.xml') ? filename : `${filename || 'Factura'}.xml`;
+      const fullPath = path.join(targetFolder, safeFilename);
+
+      const ruc = client.ruc || '';
+      const razonSocial = client.razonSocial || 'CONTRIBUYENTE';
+      const claveAcceso = invoice.claveAcceso || '';
+      const fechaHora = invoice.fechaHoraAutorizacion || `${invoice.fechaEmision || ''} 12:00:00`;
+      const fechaEmision = invoice.fechaEmision || '';
+
+      const serieMatch = (invoice.tipoSerie || invoice.numeroComprobante || '').match(/(\d{3})-(\d{3})-(\d{9})/);
+      const estab = serieMatch ? serieMatch[1] : (claveAcceso.length >= 30 ? claveAcceso.substring(24, 27) : '001');
+      const ptoEmi = serieMatch ? serieMatch[2] : (claveAcceso.length >= 30 ? claveAcceso.substring(27, 30) : '001');
+      const secuencial = serieMatch ? serieMatch[3] : (claveAcceso.length >= 39 ? claveAcceso.substring(30, 39) : '000000001');
+
+      const baseGravada = parseFloat(invoice.valorSinImpuestos) || 0.0;
+      const montoIva = parseFloat(invoice.montoIva) || 0.0;
+      const importeTotal = parseFloat(invoice.importeTotal) || (baseGravada + montoIva);
+
+      const tarifaPorc = baseGravada > 0 ? ((montoIva / baseGravada) * 100).toFixed(2) : '15.00';
+      const codPorc = (Math.round(parseFloat(tarifaPorc)) === 15) ? '4' : ((Math.round(parseFloat(tarifaPorc)) === 12) ? '2' : '0');
+
+      const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<autorizacion>
+  <estado>AUTORIZADO</estado>
+  <numeroAutorizacion>${claveAcceso}</numeroAutorizacion>
+  <fechaAutorizacion>${fechaHora}</fechaAutorizacion>
+  <comprobante><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<factura id="comprobante" version="1.1.0">
+  <infoTributaria>
+    <ambiente>2</ambiente>
+    <tipoEmision>1</tipoEmision>
+    <razonSocial>${razonSocial}</razonSocial>
+    <ruc>${ruc}</ruc>
+    <claveAcceso>${claveAcceso}</claveAcceso>
+    <codDoc>01</codDoc>
+    <estab>${estab}</estab>
+    <ptoEmi>${ptoEmi}</ptoEmi>
+    <secuencial>${secuencial}</secuencial>
+  </infoTributaria>
+  <infoFactura>
+    <fechaEmision>${fechaEmision}</fechaEmision>
+    <totalSinImpuestos>${baseGravada.toFixed(2)}</totalSinImpuestos>
+    <totalDescuento>0.00</totalDescuento>
+    <totalConImpuestos>
+      <totalImpuesto>
+        <codigo>2</codigo>
+        <codigoPorcentaje>${codPorc}</codigoPorcentaje>
+        <baseImponible>${baseGravada.toFixed(2)}</baseImponible>
+        <tarifa>${tarifaPorc}</tarifa>
+        <valor>${montoIva.toFixed(2)}</valor>
+      </totalImpuesto>
+    </totalConImpuestos>
+    <importeTotal>${importeTotal.toFixed(2)}</importeTotal>
+    <moneda>DOLAR</moneda>
+    <pagos>
+      <pago>
+        <formaPago>20</formaPago>
+        <total>${importeTotal.toFixed(2)}</total>
+      </pago>
+    </pagos>
+  </infoFactura>
+</factura>]]></comprobante>
+</autorizacion>`;
+
+      fs.writeFileSync(fullPath, xmlContent, 'utf8');
+
+      if (downloadManager) {
+        downloadManager.stats.completed++;
+        downloadManager.stats.xmlCount++;
+        downloadManager._notifyStats();
+      }
+
+      return { success: true, filePath: fullPath, filename: safeFilename };
+    } catch (e) {
+      console.error('Error guardando XML de venta emitida:', e);
+      return { success: false, error: e.message };
+    }
+  });
+
   ipcMain.handle('sri:dump-debug', async (event, data) => {
     try {
       const p = path.join(process.cwd(), 'live_debug_sri.json');

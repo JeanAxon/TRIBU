@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld('tribuApi', {
   getNavigateSriScript: (target) => ipcRenderer.invoke('sri:get-navigate-script', target),
   getVentasFilterInfoScript: () => ipcRenderer.invoke('sri:get-ventas-filter-info-script'),
   getSetVentasDateAndSearchScript: (dateStr) => ipcRenderer.invoke('sri:get-set-ventas-date-script', dateStr),
+  saveEmittedInvoiceXml: (data) => ipcRenderer.invoke('sri:save-emitted-invoice-xml', data),
   dumpDebug: (data) => ipcRenderer.invoke('sri:dump-debug', data),
 
   // =============================================================

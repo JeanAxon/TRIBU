@@ -62,6 +62,7 @@ class AtsModuleView {
     this.atsGeneratedCount = document.getElementById('atsGeneratedCount');
     this.atsGeneratedFilePath = document.getElementById('atsGeneratedFilePath');
     this.btnOpenAtsFolder = document.getElementById('btnOpenAtsFolder');
+    this.btnUploadAtsToSri = document.getElementById('btnUploadAtsToSri');
     this.btnAcceptAtsModal = document.getElementById('btnAcceptAtsModal');
     this.btnCloseAtsModal = document.getElementById('btnCloseAtsModal');
 
@@ -108,6 +109,15 @@ class AtsModuleView {
       this.btnOpenAtsFolder.addEventListener('click', () => {
         if (this.state.lastGeneratedFolder) {
           this.api.openFolderInExplorer(this.state.lastGeneratedFolder);
+        }
+      });
+    }
+
+    if (this.btnUploadAtsToSri) {
+      this.btnUploadAtsToSri.addEventListener('click', () => {
+        this.atsSuccessModal.classList.remove('active');
+        if (window.tribuNavDelegate && typeof window.tribuNavDelegate.goToSriUrl === 'function') {
+          window.tribuNavDelegate.goToSriUrl('ats');
         }
       });
     }

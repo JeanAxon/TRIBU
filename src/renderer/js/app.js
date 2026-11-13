@@ -1295,6 +1295,26 @@ document.addEventListener('DOMContentLoaded', async () => {
           showBanner('Acceso Correcto', 'success', 1200);
         }
       }
+
+      // 3. AUTO-NAVEGACIÓN EN MENÚ DE COMPROBANTES EMITIDOS
+      if (currentUrl.includes('/pages/consultas/menu.jsf')) {
+        try {
+          await webview.executeJavaScript(`
+            (function() {
+              if (!document.querySelector('form#frmPrincipal, [id*="tablaCompEmitidos"], [id*="calendarFechaDesde"]')) {
+                var links = Array.from(document.querySelectorAll('a'));
+                var emitLink = links.find(function(a) {
+                  var t = (a.innerText || '').toLowerCase();
+                  return t.includes('comprobantes electrónicos emitidos') || t.includes('comprobantes electronicos emitidos');
+                });
+                if (emitLink) {
+                  emitLink.click();
+                }
+              }
+            })()
+          `);
+        } catch (e) {}
+      }
     };
 
     // Capturar en tiempo real cualquier clave ingresada o pegada en la pantalla del webview
@@ -2010,49 +2030,53 @@ document.addEventListener('DOMContentLoaded', async () => {
             const displayName = rowData.filename || `${dateStr} - ${rowData.tipoSerie || 'Factura'}`;
             progressCurrentFile.textContent = `[${day}/${daysInMonth}] Guardando: ${displayName}`;
 
-            await window.tribuApi.setExpectedFileInfo({
-              fechaEmision: rowData.fechaEmision,
-              razonSocial: 'Venta',
-              tipoComprobante: rowData.tipoComprobante || 'Factura',
-              numeroComprobante: rowData.numeroComprobante,
-              tipoSerie: rowData.tipoSerie,
-              claveAcceso: rowData.claveAcceso,
-              filename: rowData.filename,
-              year: String(year),
-              month: rowData.month || monthFolder
-            });
-
-            const initialStats = await window.tribuApi.getDownloadStats();
-            const clickScript = await window.tribuApi.getClickRowXmlScript(i);
-            const clickRes = await currentWebview.executeJavaScript(clickScript);
-
-            if (clickRes && clickRes.success) {
-              // Esperar a que el archivo se descargue y se guarde físicamente
-              const waitStart = Date.now();
-              let downloadedNow = false;
-              while (Date.now() - waitStart < 5000) {
-                await new Promise(r => setTimeout(r, 250));
-                const currentStats = await window.tribuApi.getDownloadStats();
-                if (currentStats.completed > initialStats.completed) {
-                  downloadedNow = true;
-                  break;
+            // Guardar XML oficial de la venta emitida directamente en disco
+            try {
+              const saveRes = await window.tribuApi.saveEmittedInvoiceXml({
+                client: state.activeClient,
+                year: String(year),
+                month: rowData.month || monthFolder,
+                filename: rowData.filename,
+                invoice: {
+                  tipoComprobante: rowData.tipoComprobante || 'Factura',
+                  tipoSerie: rowData.tipoSerie,
+                  serie: rowData.tipoSerie,
+                  claveAcceso: rowData.claveAcceso,
+                  fechaHoraAutorizacion: rowData.fechaHoraAutorizacion,
+                  fechaEmision: rowData.fechaEmision,
+                  valorSinImpuestos: rowData.valorSinImpuestos,
+                  montoIva: rowData.montoIva,
+                  importeTotal: rowData.importeTotal
                 }
-                if (currentStats.failed > initialStats.failed) {
-                  break;
-                }
-              }
+              });
 
-              if (downloadedNow) {
+              if (saveRes && saveRes.success) {
                 totalDownloaded++;
                 progressCompletedCount.textContent = totalDownloaded;
               }
+            } catch (saveErr) {
+              console.warn('Aviso guardando XML de venta emitida:', saveErr);
             }
 
-            await new Promise(r => setTimeout(r, 400));
+            await new Promise(r => setTimeout(r, 200));
           }
         } else {
           progressTotalInBatch.textContent = '0 en este día';
         }
+      }
+
+      // Descargar reporte consolidado del SRI si está disponible en pantalla
+      try {
+        await currentWebview.executeJavaScript(`
+          (function() {
+            var btnReporte = Array.from(document.querySelectorAll('a, button, input')).find(function(b) {
+              var t = (b.innerText || b.value || '').toLowerCase();
+              return t.includes('descargar reporte') || t.includes('reporte');
+            });
+            if (btnReporte) btnReporte.click();
+          })()
+        `);
+      } catch (e) {}
       }
 
       if (state.cancelBulkDownload) {
@@ -2346,6 +2370,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const labels = {
         compras: 'Comprobantes Recibidos (Compras)',
         ventas: 'Comprobantes Emitidos (Ventas)',
+        ats: 'Recepción de Anexos (ATS)',
         declaracion: 'Formulario de Declaracion IVA'
       };
 
@@ -2353,6 +2378,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const targetStr = String(target || '').toLowerCase();
       if (targetStr.includes('venta') || targetStr.includes('emitid') || targetStr.includes('redireccion=60')) {
         key = 'ventas';
+      } else if (targetStr.includes('ats') || targetStr.includes('anexo') || targetStr.includes('redireccion=187')) {
+        key = 'ats';
       } else if (targetStr.includes('declaraci') || targetStr.includes('recibirdeclaracion')) {
         key = 'declaracion';
       } else {
@@ -2373,8 +2400,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // Fallback seguro usando las rutas exactas y autenticadas del SRI
       const fallbackUrls = {
-        compras: 'https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/pages/consultas/consultaComprobantesRecibidos.jsf',
-        ventas: 'https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/pages/consultas/consultaComprobantesEmitidos.jsf',
+        compras: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=57&idGrupo=55',
+        ventas: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=60&idGrupo=58',
+        ats: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=187&idGrupo=182',
         declaracion: 'https://srienlinea.sri.gob.ec/sri-declaraciones-web-internet/pages/recepcion/recibirDeclaracion.jsf?identificadorGrupoObligacion=IVA'
       };
       currentWebview.src = fallbackUrls[key] || fallbackUrls.compras;
