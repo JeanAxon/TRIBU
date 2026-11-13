@@ -16,11 +16,14 @@ const atsGenerator = require('./atsGenerator');
 const atsValidator = require('./atsValidator');
 const csvExporter = require('./csvExporter');
 const constants = require('./constants');
+const taxReconciler = require('./taxReconciler');
+const atsPhysicalDocsManager = require('./atsPhysicalDocsManager');
+const atsAnuladosManager = require('./atsAnuladosManager');
 
 class AtsModule {
   constructor() {
     this.name = 'ats-module';
-    this.version = '1.1.0';
+    this.version = '1.2.0';
   }
 
   /**
@@ -54,8 +57,8 @@ class AtsModule {
     });
 
     // 3. Generación del XML y ZIP del ATS oficial
-    ipcMain.handle('ats:generate-xml', async (event, { client, year, month, compras, ventas }) => {
-      return atsGenerator.generateAtsXml({ client, year, month, compras, ventas });
+    ipcMain.handle('ats:generate-xml', async (event, { client, year, month, compras, ventas, retenciones, comprobantesFisicos, anulados }) => {
+      return atsGenerator.generateAtsXml({ client, year, month, compras, ventas, retenciones, comprobantesFisicos, anulados });
     });
 
     // 4. Exportación de comprobantes a CSV para Excel
@@ -66,6 +69,37 @@ class AtsModule {
     // 5. Catálogos oficiales (para inicialización o consultas del frontend)
     ipcMain.handle('ats:get-constants', async () => {
       return constants;
+    });
+
+    // 6. Conciliación Tributaria (Punto G: ATS vs Formulario 104 y Formulario 103)
+    ipcMain.handle('ats:reconcile-declaraciones', async (event, params) => {
+      return taxReconciler.reconcileAtsWithDeclaraciones(params);
+    });
+
+    // 7. Gestión de Comprobantes Físicos (Notas de Venta RIMPE, Facturas Físicas, Peajes)
+    ipcMain.handle('ats:get-physical-docs', async (event, { clientFolder, year, month }) => {
+      return atsPhysicalDocsManager.getPhysicalDocsForPeriod(clientFolder, year, month);
+    });
+
+    ipcMain.handle('ats:save-physical-doc', async (event, { clientFolder, docData }) => {
+      return atsPhysicalDocsManager.savePhysicalDoc(clientFolder, docData);
+    });
+
+    ipcMain.handle('ats:delete-physical-doc', async (event, { clientFolder, docId }) => {
+      return atsPhysicalDocsManager.deletePhysicalDoc(clientFolder, docId);
+    });
+
+    // 8. Gestión de Comprobantes Anulados
+    ipcMain.handle('ats:get-anulados', async (event, { clientFolder, year, month }) => {
+      return atsAnuladosManager.getAnuladosForPeriod(clientFolder, year, month);
+    });
+
+    ipcMain.handle('ats:save-anulado', async (event, { clientFolder, anuladoData }) => {
+      return atsAnuladosManager.saveAnulado(clientFolder, anuladoData);
+    });
+
+    ipcMain.handle('ats:delete-anulado', async (event, { clientFolder, id }) => {
+      return atsAnuladosManager.deleteAnulado(clientFolder, id);
     });
 
     // Compatibilidad retroactiva con canales legacy si existieran
@@ -105,6 +139,34 @@ class AtsModule {
 
   getConstants() {
     return constants;
+  }
+
+  reconcileAtsWithDeclaraciones(params) {
+    return taxReconciler.reconcileAtsWithDeclaraciones(params);
+  }
+
+  getPhysicalDocsForPeriod(clientFolder, year, month) {
+    return atsPhysicalDocsManager.getPhysicalDocsForPeriod(clientFolder, year, month);
+  }
+
+  savePhysicalDoc(clientFolder, docData) {
+    return atsPhysicalDocsManager.savePhysicalDoc(clientFolder, docData);
+  }
+
+  deletePhysicalDoc(clientFolder, docId) {
+    return atsPhysicalDocsManager.deletePhysicalDoc(clientFolder, docId);
+  }
+
+  getAnuladosForPeriod(clientFolder, year, month) {
+    return atsAnuladosManager.getAnuladosForPeriod(clientFolder, year, month);
+  }
+
+  saveAnulado(clientFolder, data) {
+    return atsAnuladosManager.saveAnulado(clientFolder, data);
+  }
+
+  deleteAnulado(clientFolder, id) {
+    return atsAnuladosManager.deleteAnulado(clientFolder, id);
   }
 }
 

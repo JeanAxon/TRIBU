@@ -126,6 +126,45 @@ function parseXmlFile(filePath) {
     let montoIce = 0.0;
     let tarifaIvaPorcentaje = 0;
 
+    // Retenciones (Comprobante de Retención 07)
+    const retencionesRenta = [];
+    const retencionesIva = [];
+    let totalRetenidoRenta = 0.0;
+    let totalRetenidoIva = 0.0;
+
+    // Nota de Crédito (04) - Documento modificado
+    let codDocModificado = '';
+    let numDocModificado = '';
+    let estabModificado = '001';
+    let ptoEmiModificado = '001';
+    let secModificado = '000000001';
+    let fechaEmisionDocSustento = '';
+    let motivoModificacion = '';
+
+    if (docType === '04') {
+      codDocModificado = String(infoDoc.codDocModificado || '01');
+      numDocModificado = String(infoDoc.numDocModificado || '').trim();
+      fechaEmisionDocSustento = String(infoDoc.fechaEmisionDocSustento || '');
+      motivoModificacion = String(infoDoc.motivo || '');
+
+      if (numDocModificado.includes('-')) {
+        const parts = numDocModificado.split('-');
+        if (parts.length >= 3) {
+          estabModificado = parts[0].padStart(3, '0');
+          ptoEmiModificado = parts[1].padStart(3, '0');
+          secModificado = parts[2].padStart(9, '0');
+        }
+      } else {
+        const clean = numDocModificado.replace(/\D/g, '');
+        if (clean.length === 15) {
+          estabModificado = clean.substring(0, 3);
+          ptoEmiModificado = clean.substring(3, 6);
+          secModificado = clean.substring(6, 15);
+        }
+      }
+    }
+
+    // 1. Desglose de Facturas / Notas de Crédito / Liquidaciones
     const totalConImpuestos = infoDoc.totalConImpuestos;
     if (totalConImpuestos) {
       let taxItems = totalConImpuestos.totalImpuesto;
@@ -163,9 +202,102 @@ function parseXmlFile(filePath) {
       }
     }
 
+    // 2. Desglose de Comprobante de Retención (07) - Versión 1.0 (impuestos) y Versión 2.0 (docsSustento)
+    if (docType === '07') {
+      // Versión 1.0
+      if (doc.impuestos && doc.impuestos.impuesto) {
+        let impList = doc.impuestos.impuesto;
+        if (!Array.isArray(impList)) impList = [impList];
+        for (const imp of impList) {
+          const cod = String(imp.codigo || '');
+          const codRet = String(imp.codigoRetencion || '');
+          const base = toFloat(imp.baseImponible);
+          const porc = toFloat(imp.porcentajeRetener);
+          const val = toFloat(imp.valorRetenido);
+          const numDoc = String(imp.numDocSustento || '');
+          const codDocSus = String(imp.codDocSustento || '01');
+          const fechaSus = String(imp.fechaEmisionDocSustento || '');
+
+          if (cod === '1') { // Impuesto a la Renta (AIR)
+            retencionesRenta.push({
+              codRetAir: codRet,
+              baseImpAir: base,
+              porcentajeAir: porc,
+              valRetAir: val,
+              numDocSustento: numDoc,
+              codDocSustento: codDocSus,
+              fechaDocSustento: fechaSus
+            });
+            totalRetenidoRenta += val;
+          } else if (cod === '2') { // IVA
+            retencionesIva.push({
+              codigoRetencion: codRet,
+              baseImponible: base,
+              porcentajeRetener: porc,
+              valorRetenido: val,
+              numDocSustento: numDoc,
+              codDocSustento: codDocSus,
+              fechaDocSustento: fechaSus
+            });
+            totalRetenidoIva += val;
+          }
+        }
+      }
+
+      // Versión 2.0 (docsSustento)
+      if (doc.docsSustento && doc.docsSustento.docSustento) {
+        let dsList = doc.docsSustento.docSustento;
+        if (!Array.isArray(dsList)) dsList = [dsList];
+        for (const ds of dsList) {
+          const numDoc = String(ds.numDocSustento || '');
+          const codDocSus = String(ds.codDocSustento || '01');
+          const fechaSus = String(ds.fechaEmisionDocSustento || '');
+          const retContainer = ds.retenciones;
+          if (retContainer && retContainer.retencion) {
+            let rList = retContainer.retencion;
+            if (!Array.isArray(rList)) rList = [rList];
+            for (const r of rList) {
+              const cod = String(r.codigo || '');
+              const codRet = String(r.codigoRetencion || '');
+              const base = toFloat(r.baseImponible);
+              const porc = toFloat(r.porcentajeRetener);
+              const val = toFloat(r.valorRetenido);
+
+              if (cod === '1') { // Impuesto a la Renta (AIR)
+                retencionesRenta.push({
+                  codRetAir: codRet,
+                  baseImpAir: base,
+                  porcentajeAir: porc,
+                  valRetAir: val,
+                  numDocSustento: numDoc,
+                  codDocSustento: codDocSus,
+                  fechaDocSustento: fechaSus
+                });
+                totalRetenidoRenta += val;
+              } else if (cod === '2') { // IVA
+                retencionesIva.push({
+                  codigoRetencion: codRet,
+                  baseImponible: base,
+                  porcentajeRetener: porc,
+                  valorRetenido: val,
+                  numDocSustento: numDoc,
+                  codDocSustento: codDocSus,
+                  fechaDocSustento: fechaSus
+                });
+                totalRetenidoIva += val;
+              }
+            }
+          }
+        }
+      }
+    }
+
     // Importe total
     let total = toFloat(infoDoc.importeTotal || infoDoc.valorTotal);
-    if (total === 0 && (base0 > 0 || baseGravada > 0 || montoIva > 0)) {
+    if (docType === '07') {
+      total = toFloat(totalRetenidoRenta + totalRetenidoIva);
+      montoIva = toFloat(totalRetenidoIva);
+    } else if (total === 0 && (base0 > 0 || baseGravada > 0 || montoIva > 0)) {
       total = base0 + baseGravada + montoIva + montoIce + baseNoObjeto + baseExenta;
     }
 
@@ -310,7 +442,29 @@ function parseXmlFile(filePath) {
       infoAdicional,
       codSustento,
       formaPago,
-      pagos: pagosList
+      pagos: pagosList,
+      // Retenciones (Comprobante 07)
+      retencionesRenta,
+      retencionesIva,
+      totalesRetencion: {
+        totalRenta: toFloat(totalRetenidoRenta),
+        totalIva: toFloat(totalRetenidoIva),
+        totalRetenido: toFloat(totalRetenidoRenta + totalRetenidoIva)
+      },
+      sujetoRetenido: {
+        identificacion: infoDoc.identificacionSujetoRetenido || '',
+        razonSocial: infoDoc.razonSocialSujetoRetenido || '',
+        tipoIdentificacion: infoDoc.tipoIdentificacionSujetoRetenido || '04',
+        periodoFiscal: infoDoc.periodoFiscal || ''
+      },
+      // Documento Modificado (Nota de Crédito 04)
+      docModificado: codDocModificado,
+      numDocModificado,
+      estabModificado,
+      ptoEmiModificado,
+      secModificado,
+      fechaEmisionDocSustento,
+      motivoModificacion
     };
   } catch (err) {
     return {
@@ -523,7 +677,9 @@ function loadPeriodXmls(clientFolderArg, optionsArg = {}) {
   const files = fs.readdirSync(resolvedDir)
     .filter(f => f.toLowerCase().endsWith('.xml'));
 
+  const atsPhysicalDocsManager = require('./atsPhysicalDocsManager');
   const parsedItems = [];
+  const retencionesList = [];
   let totalBase0 = 0;
   let totalBaseGravada = 0;
   let totalMontoIva = 0;
@@ -534,12 +690,79 @@ function loadPeriodXmls(clientFolderArg, optionsArg = {}) {
     const fullPath = path.join(resolvedDir, file);
     const parsed = parseXmlFile(fullPath);
     if (parsed.success) {
+      if (parsed.tipoDoc === '07') {
+        retencionesList.push(parsed);
+      }
       parsedItems.push(parsed);
       totalBase0 += parsed.valores.base0;
       totalBaseGravada += parsed.valores.baseGravada;
       totalMontoIva += parsed.valores.montoIva;
       totalMontoIce += parsed.valores.montoIce;
       totalGeneral += parsed.valores.total;
+    }
+  }
+
+  // Cargar comprobantes físicos registrados manualmente para este período (solo en Compras)
+  if (category === 'Compras' && clientFolder) {
+    try {
+      const physicalDocs = atsPhysicalDocsManager.getPhysicalDocsForPeriod(clientFolder, year, month);
+      for (const pDoc of physicalDocs) {
+        parsedItems.push(pDoc);
+        totalBase0 += pDoc.valores.base0;
+        totalBaseGravada += pDoc.valores.baseGravada;
+        totalMontoIva += pDoc.valores.montoIva;
+        totalGeneral += pDoc.valores.total;
+      }
+    } catch (e) {
+      console.warn('Aviso leyendo comprobantes físicos del período:', e.message);
+    }
+  }
+
+  // Vincular automáticamente retenciones con comprobantes de sustento coincidentes
+  if (retencionesList.length > 0) {
+    for (const ret of retencionesList) {
+      const allR = [...(ret.retencionesRenta || []), ...(ret.retencionesIva || [])];
+      for (const r of allR) {
+        const numDoc = (r.numDocSustento || '').replace(/\D/g, '');
+        if (!numDoc) continue;
+        const matchingDoc = parsedItems.find(item => {
+          if (item.tipoDoc === '07') return false;
+          const sClean = (item.serie || '').replace(/\D/g, '');
+          const secClean = (item.secuencial || '').replace(/\D/g, '');
+          return sClean.includes(numDoc) || numDoc.includes(sClean) || (secClean && numDoc.endsWith(secClean));
+        });
+
+        if (matchingDoc) {
+          if (!matchingDoc.retencionesAir) matchingDoc.retencionesAir = [];
+          if (!matchingDoc.retencionDoc) {
+            matchingDoc.retencionDoc = {
+              estab: ret.estab,
+              ptoEmi: ret.ptoEmi,
+              secuencial: ret.secuencial,
+              claveAcceso: ret.claveAcceso,
+              fechaEmision: ret.fechaEmision
+            };
+          }
+          if (r.codRetAir) {
+            matchingDoc.retencionesAir.push({
+              codRetAir: r.codRetAir,
+              baseImpAir: r.baseImpAir,
+              porcentajeAir: r.porcentajeAir,
+              valRetAir: r.valRetAir
+            });
+          }
+          if (r.porcentajeRetener !== undefined && r.codigoRetencion) {
+            const p = parseFloat(r.porcentajeRetener);
+            const val = parseFloat(r.valorRetenido) || 0;
+            if (p === 10) matchingDoc.valRetBien10 = (matchingDoc.valRetBien10 || 0) + val;
+            else if (p === 20) matchingDoc.valRetServ20 = (matchingDoc.valRetServ20 || 0) + val;
+            else if (p === 30) matchingDoc.valorRetBienes = (matchingDoc.valorRetBienes || 0) + val;
+            else if (p === 50) matchingDoc.valRetServ50 = (matchingDoc.valRetServ50 || 0) + val;
+            else if (p === 70) matchingDoc.valorRetServicios = (matchingDoc.valorRetServicios || 0) + val;
+            else if (p === 100) matchingDoc.valRetServ100 = (matchingDoc.valRetServ100 || 0) + val;
+          }
+        }
+      }
     }
   }
 
@@ -555,6 +778,7 @@ function loadPeriodXmls(clientFolderArg, optionsArg = {}) {
     month,
     targetPath: resolvedDir,
     items: parsedItems,
+    retenciones: retencionesList,
     totals: {
       count: parsedItems.length,
       base0: parseFloat(totalBase0.toFixed(2)),

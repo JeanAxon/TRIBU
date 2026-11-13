@@ -59,6 +59,13 @@ contextBridge.exposeInMainWorld('tribuApi', {
   validateAtsPeriod: (params) => ipcRenderer.invoke('ats:validate-period', params),
   exportToCsv: (params) => ipcRenderer.invoke('ats:export-csv', params),
   getAtsConstants: () => ipcRenderer.invoke('ats:get-constants'),
+  reconcileAtsWithDeclaraciones: (params) => ipcRenderer.invoke('ats:reconcile-declaraciones', params),
+  getPhysicalDocs: (params) => ipcRenderer.invoke('ats:get-physical-docs', params),
+  savePhysicalDoc: (params) => ipcRenderer.invoke('ats:save-physical-doc', params),
+  deletePhysicalDoc: (params) => ipcRenderer.invoke('ats:delete-physical-doc', params),
+  getAnulados: (params) => ipcRenderer.invoke('ats:get-anulados', params),
+  saveAnulado: (params) => ipcRenderer.invoke('ats:save-anulado', params),
+  deleteAnulado: (params) => ipcRenderer.invoke('ats:delete-anulado', params),
 
   // =============================================================
   // MÓDULO DECLARACIONES SRI (FORMULARIO 104 IVA)

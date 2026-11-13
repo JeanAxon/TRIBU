@@ -172,6 +172,23 @@ function validateAtsData({ client, year, month, compras = [], ventas = [] }) {
         warnings.push(`Compra fila ${numFila} (${serie}): Total $${totalDoc.toFixed(2)} supera $${umbralFormaPago.toFixed(2)} y no tiene forma de pago asignada (se asignará 20 por defecto).`);
       }
     }
+
+    // Validación de Retenciones AIR en compras
+    if (c.retencionesAir && Array.isArray(c.retencionesAir)) {
+      c.retencionesAir.forEach((r, rIdx) => {
+        if (!r.codRetAir) {
+          warnings.push(`Compra fila ${numFila} (${serie}): Retención AIR #${rIdx + 1} no tiene código AIR.`);
+        }
+        if ((r.valRetAir !== undefined && r.valRetAir < 0) || (r.baseImpAir !== undefined && r.baseImpAir < 0)) {
+          errors.push(`Compra fila ${numFila} (${serie}): Valores de retención AIR no pueden ser negativos.`);
+        }
+      });
+    }
+
+    // Validación de Nota de Crédito en compras
+    if (c.tipoDoc === '04' && !c.docModificado && !c.numDocModificado) {
+      warnings.push(`Compra fila ${numFila} (${serie}): Nota de Crédito recibida sin referencia a comprobante modificado.`);
+    }
   });
 
   // 5. Validación de Ventas

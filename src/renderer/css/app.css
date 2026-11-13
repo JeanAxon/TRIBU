@@ -1847,7 +1847,7 @@ body {
   color: var(--primary);
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1320px) {
   .ats-toolbar {
     flex-wrap: wrap;
     gap: 8px;
@@ -1864,6 +1864,35 @@ body {
   .ats-toolbar-divider {
     display: none;
   }
+}
+
+/* Estilos de Conciliación Tributaria (Punto G) */
+.badge-success {
+  background-color: #dcfce7 !important;
+  color: #15803d !important;
+  border: 1px solid #bbf7d0 !important;
+}
+
+.badge-danger {
+  background-color: #fee2e2 !important;
+  color: #b91c1c !important;
+  border: 1px solid #fecaca !important;
+}
+
+.ats-reconcile-tabs .btn.active {
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+  border-color: var(--primary) !important;
+}
+
+.rec-f104-input, .rec-f103-input {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rec-f104-input:focus, .rec-f103-input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
+  outline: none !important;
 }
 
 /* Select Genérico de Respaldo */

@@ -117,22 +117,41 @@ function createZipBuffer(fileName, contentBuf) {
 /**
  * Genera el XML y ZIP oficial del Anexo Transaccional Simplificado (ATS) SRI Ecuador
  */
-function generateAtsXml({ client, year, month, compras = [], ventas = [] }) {
+function generateAtsXml({ client, year, month, compras = [], ventas = [], retenciones = [], comprobantesFisicos = [], anulados = [] }) {
   try {
     const month2Digits = extractMonthNumber(month);
     const yearStr = String(year);
     const rucInformante = client.ruc;
     const razonSocialInformante = escapeXml(client.razonSocial || client.name || 'CONTRIBUYENTE');
 
+    // Cargar comprobantes anulados si no se pasaron explícitamente y el cliente tiene carpeta
+    let anuladosList = Array.isArray(anulados) ? [...anulados] : [];
+    if (anuladosList.length === 0 && client && client.defaultFolder) {
+      try {
+        const atsAnuladosManager = require('./atsAnuladosManager');
+        anuladosList = atsAnuladosManager.getAnuladosForPeriod(client.defaultFolder, yearStr, month2Digits);
+      } catch (e) {}
+    }
+
     // Validación previa normativa
     const validation = validateAtsData({ client, year, month, compras, ventas });
 
     let totalVentas = 0.0;
+    const estabSalesMap = {};
+
     for (const v of ventas) {
       const b0 = v.valores ? v.valores.base0 : 0;
       const bg = v.valores ? v.valores.baseGravada : 0;
       const bNoObj = v.valores ? v.valores.baseNoObjeto : 0;
-      totalVentas += (b0 + bg + bNoObj);
+      const vTotal = (b0 + bg + bNoObj);
+      totalVentas += vTotal;
+
+      const estab = String(v.estab || '001').padStart(3, '0');
+      estabSalesMap[estab] = (estabSalesMap[estab] || 0) + vTotal;
+    }
+
+    if (Object.keys(estabSalesMap).length === 0) {
+      estabSalesMap['001'] = 0.0;
     }
 
     let xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
@@ -141,7 +160,7 @@ function generateAtsXml({ client, year, month, compras = [], ventas = [] }) {
     xml += `  <RazonSocial>${razonSocialInformante}</RazonSocial>\n`;
     xml += `  <Anio>${yearStr}</Anio>\n`;
     xml += `  <Mes>${month2Digits}</Mes>\n`;
-    xml += `  <numEstabRuc>001</numEstabRuc>\n`;
+    xml += `  <numEstabRuc>${String(Object.keys(estabSalesMap).length).padStart(3, '0')}</numEstabRuc>\n`;
     xml += `  <totalVentas>${to2Dec(totalVentas)}</totalVentas>\n`;
     xml += `  <codigoOperativo>IVA</codigoOperativo>\n`;
 
@@ -185,13 +204,13 @@ function generateAtsXml({ client, year, month, compras = [], ventas = [] }) {
         xml += `      <baseImpExe>${to2Dec(valores.baseExenta || 0)}</baseImpExe>\n`;
         xml += `      <montoIce>${to2Dec(valores.montoIce || 0)}</montoIce>\n`;
         xml += `      <montoIva>${to2Dec(valores.montoIva || 0)}</montoIva>\n`;
-        xml += `      <valRetBien10>0.00</valRetBien10>\n`;
-        xml += `      <valRetServ20>0.00</valRetServ20>\n`;
-        xml += `      <valorRetBienes>0.00</valorRetBienes>\n`;
-        xml += `      <valRetServ50>0.00</valRetServ50>\n`;
-        xml += `      <valorRetServicios>0.00</valorRetServicios>\n`;
-        xml += `      <valRetServ100>0.00</valRetServ100>\n`;
-        xml += `      <valorRetencionNc>0.00</valorRetencionNc>\n`;
+        xml += `      <valRetBien10>${to2Dec(c.valRetBien10 || 0)}</valRetBien10>\n`;
+        xml += `      <valRetServ20>${to2Dec(c.valRetServ20 || 0)}</valRetServ20>\n`;
+        xml += `      <valorRetBienes>${to2Dec(c.valorRetBienes || 0)}</valorRetBienes>\n`;
+        xml += `      <valRetServ50>${to2Dec(c.valRetServ50 || 0)}</valRetServ50>\n`;
+        xml += `      <valorRetServicios>${to2Dec(c.valorRetServicios || 0)}</valorRetServicios>\n`;
+        xml += `      <valRetServ100>${to2Dec(c.valRetServ100 || 0)}</valRetServ100>\n`;
+        xml += `      <valorRetencionNc>${to2Dec(c.valorRetencionNc || 0)}</valorRetencionNc>\n`;
         xml += `      <totbasesImpReemb>0.00</totbasesImpReemb>\n`;
         xml += '      <pagoExterior>\n';
         xml += '        <pagoLocExt>01</pagoLocExt>\n';
@@ -202,6 +221,45 @@ function generateAtsXml({ client, year, month, compras = [], ventas = [] }) {
         xml += '      <formasDePago>\n';
         xml += `        <formaPago>${formaPago}</formaPago>\n`;
         xml += '      </formasDePago>\n';
+
+        // Módulo AIR (Retenciones en la Fuente de Impuesto a la Renta)
+        const retAirList = c.retencionesAir || c.air || [];
+        if (Array.isArray(retAirList) && retAirList.length > 0) {
+          xml += '      <air>\n';
+          for (const r of retAirList) {
+            const codRetAir = r.codRetAir || '312';
+            const baseImpAir = r.baseImpAir !== undefined ? r.baseImpAir : (valores.baseGravada || 0);
+            const porcentajeAir = r.porcentajeAir || 0;
+            const valRetAir = r.valRetAir || 0;
+            xml += '        <detalleAir>\n';
+            xml += `          <codRetAir>${codRetAir}</codRetAir>\n`;
+            xml += `          <baseImpAir>${to2Dec(baseImpAir)}</baseImpAir>\n`;
+            xml += `          <porcentajeAir>${to2Dec(porcentajeAir)}</porcentajeAir>\n`;
+            xml += `          <valRetAir>${to2Dec(valRetAir)}</valRetAir>\n`;
+            xml += '        </detalleAir>\n';
+          }
+          xml += '      </air>\n';
+        }
+
+        // Datos del Comprobante de Retención emitido (si aplica)
+        if (c.retencionDoc) {
+          const rDoc = c.retencionDoc;
+          xml += `      <estabRetencion1>${rDoc.estab || estab}</estabRetencion1>\n`;
+          xml += `      <ptoEmiRetencion1>${rDoc.ptoEmi || ptoEmi}</ptoEmiRetencion1>\n`;
+          xml += `      <secRetencion1>${rDoc.secuencial || '000000001'}</secRetencion1>\n`;
+          xml += `      <autRetencion1>${rDoc.claveAcceso || autorizacion}</autRetencion1>\n`;
+          xml += `      <fechaEmiRet1>${rDoc.fechaEmision || fechaEmision}</fechaEmiRet1>\n`;
+        }
+
+        // Datos de Documento Modificado si es Nota de Crédito (04)
+        if (tipoComprobante === '04' && (c.docModificado || c.numDocModificado)) {
+          xml += `      <docModificado>${c.docModificado || '01'}</docModificado>\n`;
+          xml += `      <estabModificado>${c.estabModificado || '001'}</estabModificado>\n`;
+          xml += `      <ptoEmiModificado>${c.ptoEmiModificado || '001'}</ptoEmiModificado>\n`;
+          xml += `      <secModificado>${c.secModificado || '000000001'}</secModificado>\n`;
+          xml += `      <autModificado>${c.autModificado || autorizacion}</autModificado>\n`;
+        }
+
         xml += '    </detalleCompras>\n';
       }
       xml += '  </compras>\n';
@@ -216,12 +274,13 @@ function generateAtsXml({ client, year, month, compras = [], ventas = [] }) {
         const idCliente = (comprador.identificacion || '9999999999999').trim();
         const tpIdCliente = comprador.tipoId || (idCliente.length === 10 ? '05' : (idCliente === '9999999999999' ? '07' : '04'));
         const formaPago = v.formaPago || '20';
+        const tipoCompVenta = v.tipoDoc === '04' ? '04' : '18';
 
         xml += '    <detalleVentas>\n';
         xml += `      <tpIdCliente>${tpIdCliente}</tpIdCliente>\n`;
         xml += `      <idCliente>${idCliente}</idCliente>\n`;
         xml += `      <parteRelVtas>NO</parteRelVtas>\n`;
-        xml += `      <tipoComprobante>18</tipoComprobante>\n`; // Documentos autorizados ventas
+        xml += `      <tipoComprobante>${tipoCompVenta}</tipoComprobante>\n`;
         xml += `      <tipoEmision>E</tipoEmision>\n`;
         xml += `      <numeroComprobantes>1</numeroComprobantes>\n`;
         xml += `      <baseNoGraIva>${to2Dec(valores.baseNoObjeto || 0)}</baseNoGraIva>\n`;
@@ -229,8 +288,8 @@ function generateAtsXml({ client, year, month, compras = [], ventas = [] }) {
         xml += `      <baseImpGrav>${to2Dec(valores.baseGravada || 0)}</baseImpGrav>\n`;
         xml += `      <montoIva>${to2Dec(valores.montoIva || 0)}</montoIva>\n`;
         xml += `      <montoIce>${to2Dec(valores.montoIce || 0)}</montoIce>\n`;
-        xml += `      <valorRetIva>0.00</valorRetIva>\n`;
-        xml += `      <valorRetRenta>0.00</valorRetRenta>\n`;
+        xml += `      <valorRetIva>${to2Dec(v.valorRetIva || 0)}</valorRetIva>\n`;
+        xml += `      <valorRetRenta>${to2Dec(v.valorRetRenta || 0)}</valorRetRenta>\n`;
         xml += '      <formasDePago>\n';
         xml += `        <formaPago>${formaPago}</formaPago>\n`;
         xml += '      </formasDePago>\n';
@@ -239,14 +298,34 @@ function generateAtsXml({ client, year, month, compras = [], ventas = [] }) {
       xml += '  </ventas>\n';
     }
 
-    // 3. VENTAS ESTABLECIMIENTO
+    // 3. VENTAS ESTABLECIMIENTO (Soporte Multi-Establecimiento)
     xml += '  <ventasEstablecimiento>\n';
-    xml += '    <ventaEst>\n';
-    xml += '      <codEstab>001</codEstab>\n';
-    xml += `      <ventasEst>${to2Dec(totalVentas)}</ventasEst>\n`;
-    xml += '      <ivaComp>0.00</ivaComp>\n';
-    xml += '    </ventaEst>\n';
+    for (const [codEstab, vEst] of Object.entries(estabSalesMap)) {
+      xml += '    <ventaEst>\n';
+      xml += `      <codEstab>${codEstab}</codEstab>\n`;
+      xml += `      <ventasEst>${to2Dec(vEst)}</ventasEst>\n`;
+      xml += '      <ivaComp>0.00</ivaComp>\n';
+      xml += '    </ventaEst>\n';
+    }
     xml += '  </ventasEstablecimiento>\n';
+
+    // 4. COMPROBANTES ANULADOS (Si existen)
+    if (anuladosList.length > 0) {
+      xml += '  <anulados>\n';
+      for (const a of anuladosList) {
+        xml += '    <detalleAnulados>\n';
+        xml += `      <tipoComprobante>${a.tipoComprobante || '01'}</tipoComprobante>\n`;
+        xml += `      <establecimiento>${a.establecimiento || '001'}</establecimiento>\n`;
+        xml += `      <puntoEmision>${a.puntoEmision || '001'}</puntoEmision>\n`;
+        xml += `      <secuencialInicio>${a.secuencialInicio || 1}</secuencialInicio>\n`;
+        xml += `      <secuencialFin>${a.secuencialFin || a.secuencialInicio || 1}</secuencialFin>\n`;
+        xml += `      <autorizacion>${a.autorizacion || '0000000000000000000000000000000000000000000000000'}</autorizacion>\n`;
+        xml += '    </detalleAnulados>\n';
+      }
+      xml += '  </anulados>\n';
+    }
+
+    xml += '</iva>\n';
 
     xml += '</iva>\n';
 

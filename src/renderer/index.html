@@ -405,6 +405,14 @@
                 </svg>
                 <span>Cargar</span>
               </button>
+              <button id="btnOpenPhysicalDocModal" class="btn btn-secondary ats-action-btn" title="Registrar compra física manual (Notas de Venta RIMPE Negocios Populares, facturas físicas, peajes)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <line x1="12" y1="11" x2="12" y2="17"></line>
+                  <line x1="9" y1="14" x2="15" y2="14"></line>
+                </svg>
+                <span>+ Físico</span>
+              </button>
               <button id="btnOpenCurrentPeriodFolder" class="btn btn-secondary ats-action-btn" title="Abrir carpeta del período en el explorador de archivos">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
@@ -415,7 +423,7 @@
 
             <div class="ats-toolbar-divider" aria-hidden="true"></div>
 
-            <!-- Grupo de Generación ATS -->
+            <!-- Grupo de Generación ATS y Conciliación -->
             <div class="ats-btn-cluster">
               <button id="btnGenerateAtsCeros" class="btn btn-secondary ats-action-btn ats-btn-ceros" title="Generar Anexo ATS sin movimientos (en ceros) para cualquier período">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -430,6 +438,12 @@
                   <path d="m9 12 2 2 4-4"></path>
                 </svg>
                 <span>Validar</span>
+              </button>
+              <button id="btnAtsReconcile" class="btn btn-secondary ats-action-btn font-bold" title="Conciliación tributaria preventiva entre el ATS y los Formularios 104 (IVA) y 103 (Retenciones) del SRI">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 3v18M3 9l9-6 9 6M6 14l-3-5 3-5M18 14l3-5-3-5M3 14h6M15 14h6"/>
+                </svg>
+                <span>Conciliar F104/F103</span>
               </button>
               <button id="btnExportCsv" class="btn btn-secondary ats-action-btn" title="Exportar reporte de comprobantes a formato Excel (CSV)">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1134,6 +1148,221 @@
       <div class="modal-footer">
         <button id="btnCancelAtsCeros" class="btn btn-secondary">Cancelar</button>
         <button id="btnConfirmGenerateCeros" class="btn btn-primary font-bold">Generar ATS en Ceros (ZIP)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONCILIACIÓN TRIBUTARIA (PUNTO G: ATS VS FORMULARIOS SRI) -->
+  <div id="atsReconciliationModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="atsReconcileModalTitle">
+    <div class="modal-content" style="max-width: 960px; max-height: 88vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <div>
+          <h3 id="atsReconcileModalTitle" class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 3v18M3 9l9-6 9 6M6 14l-3-5 3-5M18 14l3-5-3-5M3 14h6M15 14h6"/>
+            </svg>
+            <span>Conciliación Tributaria - ATS vs Formularios SRI</span>
+          </h3>
+          <p style="font-size: 12px; color: var(--muted-foreground); margin: 2px 0 0 0;">
+            Cruce preventivo de casilleros oficiales entre el Anexo Transaccional y las declaraciones SRI en Línea.
+          </p>
+        </div>
+        <button id="btnCloseReconciliationModal" class="modal-close-btn" aria-label="Cerrar conciliación">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 16px 20px;">
+        <!-- Pestañas de Conciliación -->
+        <div class="ats-reconcile-tabs" style="display: flex; gap: 8px; border-bottom: 1px solid var(--border); margin-bottom: 14px; padding-bottom: 8px;">
+          <button type="button" id="tabReconcileF104" class="btn btn-secondary active font-bold" style="font-size: 12px;">
+            Formulario 104 (Declaración de IVA)
+          </button>
+          <button type="button" id="tabReconcileF103" class="btn btn-secondary" style="font-size: 12px;">
+            Formulario 103 (Retenciones en la Fuente)
+          </button>
+        </div>
+
+        <!-- Panel F104 -->
+        <div id="panelReconcileF104">
+          <!-- KPIs F104 -->
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px;">
+            <div class="kpi-card" style="padding: 10px;">
+              <div style="font-size: 11px; color: var(--muted-foreground); font-weight: 600;">VENTAS GRAVADAS (411)</div>
+              <div id="recKpiVentasGrav" style="font-size: 16px; font-weight: 700; color: var(--foreground);">$0.00</div>
+            </div>
+            <div class="kpi-card" style="padding: 10px;">
+              <div style="font-size: 11px; color: var(--muted-foreground); font-weight: 600;">IVA VENTAS (421)</div>
+              <div id="recKpiIvaVentas" style="font-size: 16px; font-weight: 700; color: #16a34a;">$0.00</div>
+            </div>
+            <div class="kpi-card" style="padding: 10px;">
+              <div style="font-size: 11px; color: var(--muted-foreground); font-weight: 600;">COMPRAS GRAVADAS (510)</div>
+              <div id="recKpiComprasGrav" style="font-size: 16px; font-weight: 700; color: var(--foreground);">$0.00</div>
+            </div>
+            <div class="kpi-card" style="padding: 10px;">
+              <div style="font-size: 11px; color: var(--muted-foreground); font-weight: 600;">IVA COMPRAS (520)</div>
+              <div id="recKpiIvaCompras" style="font-size: 16px; font-weight: 700; color: #2563eb;">$0.00</div>
+            </div>
+          </div>
+
+          <!-- Tabla de Casilleros F104 -->
+          <div class="table-responsive" style="border: 1px solid var(--border); border-radius: 6px; overflow: hidden;">
+            <table class="data-table" style="width: 100%; font-size: 12px; margin: 0;">
+              <thead>
+                <tr style="background: var(--secondary);">
+                  <th style="width: 75px; text-align: center;">Casillero</th>
+                  <th>Concepto Oficial SRI (Formulario 104)</th>
+                  <th style="width: 130px; text-align: right;">Según ATS</th>
+                  <th style="width: 130px; text-align: right;">En Declaración</th>
+                  <th style="width: 110px; text-align: right;">Diferencia</th>
+                  <th style="width: 110px; text-align: center;">Estado</th>
+                </tr>
+              </thead>
+              <tbody id="atsReconcileF104Body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Panel F103 -->
+        <div id="panelReconcileF103" style="display: none;">
+          <!-- KPIs F103 -->
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;">
+            <div class="kpi-card" style="padding: 10px;">
+              <div style="font-size: 11px; color: var(--muted-foreground); font-weight: 600;">RETENCIONES RENTA (AIR)</div>
+              <div id="recKpiTotalAir" style="font-size: 16px; font-weight: 700; color: var(--foreground);">$0.00</div>
+            </div>
+            <div class="kpi-card" style="padding: 10px;">
+              <div style="font-size: 11px; color: var(--muted-foreground); font-weight: 600;">RETENCIONES IVA EMITIDAS</div>
+              <div id="recKpiTotalRetIva" style="font-size: 16px; font-weight: 700; color: #2563eb;">$0.00</div>
+            </div>
+            <div class="kpi-card" style="padding: 10px;">
+              <div style="font-size: 11px; color: var(--muted-foreground); font-weight: 600;">TOTAL A PAGAR F103</div>
+              <div id="recKpiTotalF103" style="font-size: 16px; font-weight: 700; color: #16a34a;">$0.00</div>
+            </div>
+          </div>
+
+          <!-- Tabla AIR F103 -->
+          <div class="table-responsive" style="border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 12px;">
+            <table class="data-table" style="width: 100%; font-size: 12px; margin: 0;">
+              <thead>
+                <tr style="background: var(--secondary);">
+                  <th style="width: 75px; text-align: center;">Cód. AIR</th>
+                  <th>Concepto de Retención en la Fuente</th>
+                  <th style="width: 80px; text-align: center;">%</th>
+                  <th style="width: 120px; text-align: right;">Base Imponible</th>
+                  <th style="width: 120px; text-align: right;">Retenido ATS</th>
+                  <th style="width: 120px; text-align: right;">En F103</th>
+                  <th style="width: 95px; text-align: right;">Diferencia</th>
+                  <th style="width: 95px; text-align: center;">Estado</th>
+                </tr>
+              </thead>
+              <tbody id="atsReconcileF103Body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 12px; color: var(--muted-foreground);" id="recFooterStatus">
+          Todos los casilleros conciliados con precisión al centavo.
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button id="btnAtsReconcileAutofill" class="btn btn-secondary font-bold">Auto-completar desde ATS</button>
+          <button id="btnAtsReconcilePrint" class="btn btn-secondary">Imprimir / Guardar Reporte</button>
+          <button id="btnAcceptReconciliation" class="btn btn-primary font-bold">Aceptar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTRO DE COMPROBANTE FÍSICO (COMPRAS) -->
+  <div id="atsPhysicalDocModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="atsPhysicalDocModalTitle">
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 id="atsPhysicalDocModalTitle" class="modal-title">Registrar Comprobante Físico</h3>
+        <button id="btnClosePhysicalDocModal" class="modal-close-btn" aria-label="Cerrar comprobante físico">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 12px; color: var(--muted-foreground); margin: 0 0 12px 0;">
+          Registra compras sustentadas en notas de venta físicas (RIMPE Negocios Populares), facturas preimpresas o peajes.
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+          <div>
+            <label for="physDocType" style="display: block; font-weight: 600; font-size: 12px; margin-bottom: 3px;">Tipo Comprobante:</label>
+            <select id="physDocType" class="ats-select" style="width: 100%;">
+              <option value="02" selected>02 - Nota de Venta (RIMPE / Físico)</option>
+              <option value="01">01 - Factura Física Preimpresa</option>
+              <option value="09">09 - Tique de Máquina Registradora</option>
+            </select>
+          </div>
+          <div>
+            <label for="physFechaEmision" style="display: block; font-weight: 600; font-size: 12px; margin-bottom: 3px;">Fecha Emisión (DD/MM/AAAA):</label>
+            <input type="text" id="physFechaEmision" placeholder="01/10/2024" class="ats-select" style="width: 100%;">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+          <div>
+            <label for="physRuc" style="display: block; font-weight: 600; font-size: 12px; margin-bottom: 3px;">RUC / Cédula Proveedor:</label>
+            <input type="text" id="physRuc" placeholder="1790012345001" class="ats-select" style="width: 100%;">
+          </div>
+          <div>
+            <label for="physRazonSocial" style="display: block; font-weight: 600; font-size: 12px; margin-bottom: 3px;">Razón Social Proveedor:</label>
+            <input type="text" id="physRazonSocial" placeholder="TIENDA DON PEPE" class="ats-select" style="width: 100%;">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+          <div>
+            <label for="physSerie" style="display: block; font-weight: 600; font-size: 12px; margin-bottom: 3px;">No. Serie (Estab-Pto-Sec):</label>
+            <input type="text" id="physSerie" placeholder="001-001-000000123" class="ats-select" style="width: 100%;">
+          </div>
+          <div>
+            <label for="physAutorizacion" style="display: block; font-weight: 600; font-size: 12px; margin-bottom: 3px;">No. Autorización SRI (10 dígitos):</label>
+            <input type="text" id="physAutorizacion" placeholder="1122334455" class="ats-select" style="width: 100%;">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+          <div>
+            <label for="physBase0" style="display: block; font-weight: 600; font-size: 12px; margin-bottom: 3px;">Base 0% ($):</label>
+            <input type="number" step="0.01" id="physBase0" value="0.00" class="ats-select" style="width: 100%;">
+          </div>
+          <div>
+            <label for="physBaseGravada" style="display: block; font-weight: 600; font-size: 12px; margin-bottom: 3px;">Base Gravada ($):</label>
+            <input type="number" step="0.01" id="physBaseGravada" value="0.00" class="ats-select" style="width: 100%;">
+          </div>
+          <div>
+            <label for="physIva" style="display: block; font-weight: 600; font-size: 12px; margin-bottom: 3px;">Monto IVA ($):</label>
+            <input type="number" step="0.01" id="physIva" value="0.00" class="ats-select" style="width: 100%;">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <label for="physCodSustento" style="display: block; font-weight: 600; font-size: 12px; margin-bottom: 3px;">Sustento Tributario:</label>
+            <select id="physCodSustento" class="ats-select" style="width: 100%;">
+              <option value="01">01 - Crédito Tributario IVA</option>
+              <option value="02" selected>02 - Costo / Gasto Deducible IR</option>
+              <option value="00">00 - Casos Especiales</option>
+            </select>
+          </div>
+          <div>
+            <label for="physFormaPago" style="display: block; font-weight: 600; font-size: 12px; margin-bottom: 3px;">Forma de Pago:</label>
+            <select id="physFormaPago" class="ats-select" style="width: 100%;">
+              <option value="01" selected>01 - Sin utilización del sistema financiero</option>
+              <option value="20">20 - Con sistema financiero</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCancelPhysicalDoc" class="btn btn-secondary">Cancelar</button>
+        <button id="btnSavePhysicalDoc" class="btn btn-primary font-bold">Guardar en Período</button>
       </div>
     </div>
   </div>

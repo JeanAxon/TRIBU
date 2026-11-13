@@ -101,9 +101,50 @@ class AtsModuleView {
     this.btnCloseInvoiceViewer = document.getElementById('btnCloseInvoiceViewer');
     this.btnDismissInvoiceViewer = document.getElementById('btnDismissInvoiceViewer');
 
+    // Elementos de Conciliación Tributaria (Punto G)
+    this.btnAtsReconcile = document.getElementById('btnAtsReconcile');
+    this.atsReconciliationModal = document.getElementById('atsReconciliationModal');
+    this.btnCloseReconciliationModal = document.getElementById('btnCloseReconciliationModal');
+    this.btnAcceptReconciliation = document.getElementById('btnAcceptReconciliation');
+    this.tabReconcileF104 = document.getElementById('tabReconcileF104');
+    this.tabReconcileF103 = document.getElementById('tabReconcileF103');
+    this.panelReconcileF104 = document.getElementById('panelReconcileF104');
+    this.panelReconcileF103 = document.getElementById('panelReconcileF103');
+    this.atsReconcileF104Body = document.getElementById('atsReconcileF104Body');
+    this.atsReconcileF103Body = document.getElementById('atsReconcileF103Body');
+    this.btnAtsReconcileAutofill = document.getElementById('btnAtsReconcileAutofill');
+    this.btnAtsReconcilePrint = document.getElementById('btnAtsReconcilePrint');
+    this.recKpiVentasGrav = document.getElementById('recKpiVentasGrav');
+    this.recKpiIvaVentas = document.getElementById('recKpiIvaVentas');
+    this.recKpiComprasGrav = document.getElementById('recKpiComprasGrav');
+    this.recKpiIvaCompras = document.getElementById('recKpiIvaCompras');
+    this.recKpiTotalAir = document.getElementById('recKpiTotalAir');
+    this.recKpiTotalRetIva = document.getElementById('recKpiTotalRetIva');
+    this.recKpiTotalF103 = document.getElementById('recKpiTotalF103');
+    this.recFooterStatus = document.getElementById('recFooterStatus');
+
+    // Elementos de Registro de Comprobantes Físicos
+    this.btnOpenPhysicalDocModal = document.getElementById('btnOpenPhysicalDocModal');
+    this.atsPhysicalDocModal = document.getElementById('atsPhysicalDocModal');
+    this.btnClosePhysicalDocModal = document.getElementById('btnClosePhysicalDocModal');
+    this.btnCancelPhysicalDoc = document.getElementById('btnCancelPhysicalDoc');
+    this.btnSavePhysicalDoc = document.getElementById('btnSavePhysicalDoc');
+    this.physDocType = document.getElementById('physDocType');
+    this.physFechaEmision = document.getElementById('physFechaEmision');
+    this.physRuc = document.getElementById('physRuc');
+    this.physRazonSocial = document.getElementById('physRazonSocial');
+    this.physSerie = document.getElementById('physSerie');
+    this.physAutorizacion = document.getElementById('physAutorizacion');
+    this.physBase0 = document.getElementById('physBase0');
+    this.physBaseGravada = document.getElementById('physBaseGravada');
+    this.physIva = document.getElementById('physIva');
+    this.physCodSustento = document.getElementById('physCodSustento');
+    this.physFormaPago = document.getElementById('physFormaPago');
+
     this.currentPreviewData = null;
     this.currentSavedPath = null;
     this.currentInvoiceClave = '';
+    this.currentReconciliation = null;
   }
 
   _bindEvents() {
@@ -263,6 +304,70 @@ class AtsModuleView {
 
     if (this.atsCerosMonth) {
       this.atsCerosMonth.addEventListener('change', () => this._updateCerosTargetFileName());
+    }
+
+    // Eventos de Conciliación Tributaria (Punto G)
+    if (this.btnAtsReconcile) {
+      this.btnAtsReconcile.addEventListener('click', () => this.openReconciliationModal());
+    }
+
+    if (this.btnCloseReconciliationModal) {
+      this.btnCloseReconciliationModal.addEventListener('click', () => {
+        this.atsReconciliationModal.classList.remove('active');
+      });
+    }
+
+    if (this.btnAcceptReconciliation) {
+      this.btnAcceptReconciliation.addEventListener('click', () => {
+        this.atsReconciliationModal.classList.remove('active');
+      });
+    }
+
+    if (this.tabReconcileF104) {
+      this.tabReconcileF104.addEventListener('click', () => {
+        this.tabReconcileF104.classList.add('active', 'font-bold');
+        this.tabReconcileF103.classList.remove('active', 'font-bold');
+        this.panelReconcileF104.style.display = 'block';
+        this.panelReconcileF103.style.display = 'none';
+      });
+    }
+
+    if (this.tabReconcileF103) {
+      this.tabReconcileF103.addEventListener('click', () => {
+        this.tabReconcileF103.classList.add('active', 'font-bold');
+        this.tabReconcileF104.classList.remove('active', 'font-bold');
+        this.panelReconcileF103.style.display = 'block';
+        this.panelReconcileF104.style.display = 'none';
+      });
+    }
+
+    if (this.btnAtsReconcileAutofill) {
+      this.btnAtsReconcileAutofill.addEventListener('click', () => this.autofillReconciliationFromAts());
+    }
+
+    if (this.btnAtsReconcilePrint) {
+      this.btnAtsReconcilePrint.addEventListener('click', () => this.printReconciliationReport());
+    }
+
+    // Eventos de Comprobantes Físicos
+    if (this.btnOpenPhysicalDocModal) {
+      this.btnOpenPhysicalDocModal.addEventListener('click', () => this.openPhysicalDocModal());
+    }
+
+    if (this.btnClosePhysicalDocModal) {
+      this.btnClosePhysicalDocModal.addEventListener('click', () => {
+        this.atsPhysicalDocModal.classList.remove('active');
+      });
+    }
+
+    if (this.btnCancelPhysicalDoc) {
+      this.btnCancelPhysicalDoc.addEventListener('click', () => {
+        this.atsPhysicalDocModal.classList.remove('active');
+      });
+    }
+
+    if (this.btnSavePhysicalDoc) {
+      this.btnSavePhysicalDoc.addEventListener('click', () => this.savePhysicalDoc());
     }
   }
 
@@ -535,10 +640,25 @@ class AtsModuleView {
       const emisor = item.emisor || {};
       const valores = item.valores || {};
 
+      const isFisico = Boolean(item.esFisico);
+      const hasAir = Boolean(item.retencionesAir && item.retencionesAir.length > 0);
+
+      const tipoBadgeHtml = isFisico
+        ? `<span class="badge" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-size: 11px; padding: 2px 6px; border-radius: 4px;">Físico (${this._escapeHtml(item.tipoDocNombre || 'Nota Venta')})</span>`
+        : `<span class="badge-tipo-doc">${this._escapeHtml(item.tipoDocNombre || 'Factura')}</span>`;
+
+      const airBadgeHtml = hasAir
+        ? `<span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 10px; margin-left: 4px; padding: 1px 4px; border-radius: 4px;" title="Retención AIR aplicada">AIR</span>`
+        : '';
+
+      const deleteBtnHtml = isFisico
+        ? `<button class="btn-table-action btn-delete-phys" data-id="${item.id}" title="Eliminar comprobante físico" style="color: #ef4444; margin-left: 4px;">Eliminar</button>`
+        : '';
+
       tr.innerHTML = `
         <td style="font-weight: 600; color: #64748b;">${index + 1}</td>
         <td>${this._escapeHtml(item.fechaEmision || '')}</td>
-        <td><span class="badge-tipo-doc">${this._escapeHtml(item.tipoDocNombre || 'Factura')}</span></td>
+        <td>${tipoBadgeHtml}${airBadgeHtml}</td>
         <td style="font-weight: 600; font-variant-numeric: tabular-nums;">${this._escapeHtml(item.serie || '')}</td>
         <td style="font-variant-numeric: tabular-nums;">${this._escapeHtml(emisor.ruc || '')}</td>
         <td title="${this._escapeHtml(emisor.razonSocial || '')}" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
@@ -568,6 +688,7 @@ class AtsModuleView {
             </svg>
             <span>Ver Factura</span>
           </button>
+          ${deleteBtnHtml}
         </td>
       `;
 
@@ -582,6 +703,16 @@ class AtsModuleView {
       btnViewFactura.addEventListener('click', () => {
         this.openInvoiceViewer(item);
       });
+
+      // Botón para eliminar comprobante físico
+      if (isFisico) {
+        const btnDel = tr.querySelector('.btn-delete-phys');
+        if (btnDel) {
+          btnDel.addEventListener('click', () => {
+            this.deletePhysicalDoc(item.id);
+          });
+        }
+      }
 
       this.tableBody.appendChild(tr);
     });
@@ -1580,6 +1711,417 @@ class AtsModuleView {
         </div>
       </div>
     `;
+  }
+
+  // =========================================================================
+  // MÓDULO DE CONCILIACIÓN TRIBUTARIA (PUNTO G: ATS VS FORMULARIOS SRI)
+  // =========================================================================
+
+  async openReconciliationModal() {
+    const client = this.getActiveClient();
+    if (!client || !client.defaultFolder) {
+      if (typeof this.showBanner === 'function') {
+        this.showBanner('Selecciona un cliente para iniciar la conciliación tributaria.', 'warning');
+      }
+      return;
+    }
+
+    const year = this.state.year || (this.filterYear ? this.filterYear.value : String(new Date().getFullYear()));
+    const month = this.state.month || (this.filterMonth ? this.filterMonth.value : '01');
+
+    try {
+      if (typeof this.showBanner === 'function') {
+        this.showBanner('Cargando y conciliando transacciones del período...', 'info');
+      }
+
+      // Cargar Compras del período
+      let compras = [];
+      let retEmitidas = [];
+      try {
+        const cRes = await this.api.loadPeriodXmls({
+          clientFolder: client.defaultFolder,
+          category: 'Compras',
+          year,
+          month
+        });
+        compras = (cRes && cRes.items) || [];
+        retEmitidas = (cRes && cRes.retenciones) || [];
+      } catch (e) {
+        console.warn('Aviso cargando compras para conciliación:', e);
+      }
+
+      // Cargar Ventas del período
+      let ventas = [];
+      let retRecibidas = [];
+      try {
+        const vRes = await this.api.loadPeriodXmls({
+          clientFolder: client.defaultFolder,
+          category: 'Ventas',
+          year,
+          month
+        });
+        ventas = (vRes && vRes.items) || [];
+        retRecibidas = (vRes && vRes.retenciones) || [];
+      } catch (e) {
+        console.warn('Aviso cargando ventas para conciliación:', e);
+      }
+
+      // Ejecutar conciliación con motor de negocio
+      const recResult = await this.api.reconcileAtsWithDeclaraciones({
+        compras,
+        ventas,
+        retencionesEmitidas: retEmitidas,
+        retencionesRecibidas: retRecibidas
+      });
+
+      this.currentReconciliation = recResult;
+      this._renderReconciliationF104(recResult.form104.rows, recResult.form104.resumen);
+      this._renderReconciliationF103(recResult.form103.airRows, recResult.form103.retencionesIvaEmitidas, recResult.form103.resumen);
+      this._updateReconciliationSummaryBadge();
+
+      if (this.atsReconciliationModal) {
+        this.atsReconciliationModal.classList.add('active');
+      }
+    } catch (err) {
+      if (typeof this.showBanner === 'function') {
+        this.showBanner(`Error en conciliación tributaria: ${err.message}`, 'error');
+      }
+    }
+  }
+
+  _renderReconciliationF104(rows, resumen) {
+    if (this.recKpiVentasGrav) this.recKpiVentasGrav.textContent = `$${(resumen.totalVentasNetas || 0).toFixed(2)}`;
+    if (this.recKpiIvaVentas) this.recKpiIvaVentas.textContent = `$${(resumen.ivaVentasGenerado || 0).toFixed(2)}`;
+    if (this.recKpiComprasGrav) this.recKpiComprasGrav.textContent = `$${(resumen.totalComprasNetas || 0).toFixed(2)}`;
+    if (this.recKpiIvaCompras) this.recKpiIvaCompras.textContent = `$${(resumen.ivaComprasCausado || 0).toFixed(2)}`;
+
+    if (!this.atsReconcileF104Body) return;
+    this.atsReconcileF104Body.innerHTML = '';
+
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      const badgeCls = r.isBalanced ? 'badge-success' : 'badge-danger';
+      const badgeTxt = r.isBalanced ? 'Cuadrado' : 'Discrepancia';
+      const diffColor = r.isBalanced ? '#16a34a' : '#dc2626';
+
+      tr.innerHTML = `
+        <td style="text-align: center; font-weight: 700; color: #1e40af;">${r.casillero}</td>
+        <td style="font-weight: 500;">${this._escapeHtml(r.descripcion)}</td>
+        <td style="text-align: right; font-weight: 600; font-variant-numeric: tabular-nums;">$${r.atsCalculado.toFixed(2)}</td>
+        <td style="text-align: right;">
+          <input type="number" step="0.01" class="rec-f104-input ats-select" data-casillero="${r.casillero}" value="${r.declarado.toFixed(2)}" style="width: 105px; text-align: right; height: 26px; padding: 2px 6px; font-weight: 600;">
+        </td>
+        <td style="text-align: right; font-weight: 700; color: ${diffColor}; font-variant-numeric: tabular-nums;" id="recDiffF104_${r.casillero}">
+          $${r.diferencia.toFixed(2)}
+        </td>
+        <td style="text-align: center;">
+          <span class="badge ${badgeCls}" id="recBadgeF104_${r.casillero}" style="padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 700;">
+            ${badgeTxt}
+          </span>
+        </td>
+      `;
+
+      const input = tr.querySelector('.rec-f104-input');
+      input.addEventListener('input', () => {
+        const val = parseFloat(input.value) || 0.0;
+        const diff = Math.round(((r.atsCalculado - val) + Number.EPSILON) * 100) / 100;
+        const isOk = Math.abs(diff) < 0.01;
+
+        const diffEl = document.getElementById(`recDiffF104_${r.casillero}`);
+        const badgeEl = document.getElementById(`recBadgeF104_${r.casillero}`);
+
+        if (diffEl) {
+          diffEl.textContent = `$${diff.toFixed(2)}`;
+          diffEl.style.color = isOk ? '#16a34a' : '#dc2626';
+        }
+        if (badgeEl) {
+          badgeEl.className = `badge ${isOk ? 'badge-success' : 'badge-danger'}`;
+          badgeEl.textContent = isOk ? 'Cuadrado' : 'Discrepancia';
+        }
+        this._updateReconciliationSummaryBadge();
+      });
+
+      this.atsReconcileF104Body.appendChild(tr);
+    });
+  }
+
+  _renderReconciliationF103(airRows, ivaEmitidas, resumen) {
+    if (this.recKpiTotalAir) this.recKpiTotalAir.textContent = `$${(resumen.totalRentaRetenido || 0).toFixed(2)}`;
+    if (this.recKpiTotalRetIva) this.recKpiTotalRetIva.textContent = `$${(resumen.totalIvaRetenido || 0).toFixed(2)}`;
+    if (this.recKpiTotalF103) this.recKpiTotalF103.textContent = `$${(resumen.totalPagarF103 || 0).toFixed(2)}`;
+
+    if (!this.atsReconcileF103Body) return;
+    this.atsReconcileF103Body.innerHTML = '';
+
+    if (airRows.length === 0) {
+      this.atsReconcileF103Body.innerHTML = `
+        <tr>
+          <td colspan="8" class="table-empty-cell" style="padding: 18px; text-align: center; color: var(--muted-foreground);">
+            No se detectaron retenciones en la fuente de Impuesto a la Renta (AIR) emitidas en este período.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    airRows.forEach(item => {
+      const tr = document.createElement('tr');
+      const badgeCls = item.isBalanced ? 'badge-success' : 'badge-danger';
+      const badgeTxt = item.isBalanced ? 'Cuadrado' : 'Discrepancia';
+      const diffColor = item.isBalanced ? '#16a34a' : '#dc2626';
+
+      tr.innerHTML = `
+        <td style="text-align: center; font-weight: 700; color: #1e40af;">${item.codigo}</td>
+        <td style="font-weight: 500;">${this._escapeHtml(item.concepto)}</td>
+        <td style="text-align: center; font-weight: 600;">${item.porcentaje}%</td>
+        <td style="text-align: right; font-weight: 600; font-variant-numeric: tabular-nums;">$${item.baseImponible.toFixed(2)}</td>
+        <td style="text-align: right; font-weight: 700; color: #1e40af; font-variant-numeric: tabular-nums;">$${item.valorRetenidoAts.toFixed(2)}</td>
+        <td style="text-align: right;">
+          <input type="number" step="0.01" class="rec-f103-input ats-select" data-codigo="${item.codigo}" value="${item.declarado.toFixed(2)}" style="width: 105px; text-align: right; height: 26px; padding: 2px 6px; font-weight: 600;">
+        </td>
+        <td style="text-align: right; font-weight: 700; color: ${diffColor}; font-variant-numeric: tabular-nums;" id="recDiffF103_${item.codigo}">
+          $${item.diferencia.toFixed(2)}
+        </td>
+        <td style="text-align: center;">
+          <span class="badge ${badgeCls}" id="recBadgeF103_${item.codigo}" style="padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 700;">
+            ${badgeTxt}
+          </span>
+        </td>
+      `;
+
+      const input = tr.querySelector('.rec-f103-input');
+      input.addEventListener('input', () => {
+        const val = parseFloat(input.value) || 0.0;
+        const diff = Math.round(((item.valorRetenidoAts - val) + Number.EPSILON) * 100) / 100;
+        const isOk = Math.abs(diff) < 0.01;
+
+        const diffEl = document.getElementById(`recDiffF103_${item.codigo}`);
+        const badgeEl = document.getElementById(`recBadgeF103_${item.codigo}`);
+
+        if (diffEl) {
+          diffEl.textContent = `$${diff.toFixed(2)}`;
+          diffEl.style.color = isOk ? '#16a34a' : '#dc2626';
+        }
+        if (badgeEl) {
+          badgeEl.className = `badge ${isOk ? 'badge-success' : 'badge-danger'}`;
+          badgeEl.textContent = isOk ? 'Cuadrado' : 'Discrepancia';
+        }
+        this._updateReconciliationSummaryBadge();
+      });
+
+      this.atsReconcileF103Body.appendChild(tr);
+    });
+  }
+
+  _updateReconciliationSummaryBadge() {
+    if (!this.recFooterStatus) return;
+    let discCount = 0;
+    const diffs = document.querySelectorAll('.modal-body .badge-danger');
+    if (diffs) discCount = diffs.length;
+
+    if (discCount === 0) {
+      this.recFooterStatus.innerHTML = '<span style="color: #16a34a; font-weight: 700;">Conciliación Impecable:</span> Todas las cifras del ATS coinciden exactamente con la declaración SRI (Diferencia $0.00).';
+    } else {
+      this.recFooterStatus.innerHTML = `<span style="color: #dc2626; font-weight: 700;">Atención Contable:</span> Se detectaron ${discCount} discrepancia(s) entre el ATS y los valores declarados.`;
+    }
+  }
+
+  autofillReconciliationFromAts() {
+    if (!this.currentReconciliation) return;
+    const f104Inputs = document.querySelectorAll('.rec-f104-input');
+    f104Inputs.forEach(inp => {
+      const c = inp.getAttribute('data-casillero');
+      const row = (this.currentReconciliation.form104.rows || []).find(r => r.casillero === c);
+      if (row) {
+        inp.value = row.atsCalculado.toFixed(2);
+        inp.dispatchEvent(new Event('input'));
+      }
+    });
+
+    const f103Inputs = document.querySelectorAll('.rec-f103-input');
+    f103Inputs.forEach(inp => {
+      const cod = inp.getAttribute('data-codigo');
+      const item = (this.currentReconciliation.form103.airRows || []).find(r => r.codigo === cod);
+      if (item) {
+        inp.value = item.valorRetenidoAts.toFixed(2);
+        inp.dispatchEvent(new Event('input'));
+      }
+    });
+
+    if (typeof this.showBanner === 'function') {
+      this.showBanner('Valores sugeridos del ATS transferidos a todos los casilleros.', 'info');
+    }
+  }
+
+  printReconciliationReport() {
+    const client = this.getActiveClient();
+    const periodStr = `${this._getMonthLabel(this.state.month)} ${this.state.year}`;
+    const clientName = client ? (client.razonSocial || client.name) : 'CONTRIBUYENTE';
+    const clientRuc = client ? client.ruc : '0000000000001';
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Habilita las ventanas emergentes para imprimir el reporte de conciliación.');
+      return;
+    }
+
+    const f104TableHtml = this.atsReconcileF104Body ? this.atsReconcileF104Body.parentElement.outerHTML : '';
+    const f103TableHtml = this.atsReconcileF103Body ? this.atsReconcileF103Body.parentElement.outerHTML : '';
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Acta de Conciliación Tributaria - ${clientRuc} - ${periodStr}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; color: #0f172a; margin: 30px; }
+          h2, h3 { margin: 0 0 6px 0; }
+          .header-box { border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
+          th, td { border: 1px solid #cbd5e1; padding: 6px 8px; }
+          th { background: #f1f5f9; text-align: left; }
+          input { border: none; background: transparent; font-weight: bold; width: 80px; text-align: right; }
+          .badge { font-weight: bold; padding: 2px 6px; }
+          .badge-success { color: #16a34a; }
+          .badge-danger { color: #dc2626; }
+        </style>
+      </head>
+      <body>
+        <div class="header-box">
+          <h2>TRIBU - Acta de Conciliación Tributaria ATS vs Declaraciones SRI</h2>
+          <div><strong>Contribuyente:</strong> ${clientName} | <strong>RUC:</strong> ${clientRuc}</div>
+          <div><strong>Período Fiscal:</strong> ${periodStr} | <strong>Fecha de Emisión:</strong> ${new Date().toLocaleString('es-EC')}</div>
+        </div>
+        <h3>1. Formulario 104 - Impuesto al Valor Agregado (IVA)</h3>
+        ${f104TableHtml}
+        <h3>2. Formulario 103 - Retenciones en la Fuente de Impuesto a la Renta (AIR)</h3>
+        ${f103TableHtml}
+        <div style="margin-top: 40px; display: flex; justify-content: space-between;">
+          <div style="border-top: 1px solid #000; width: 220px; text-align: center; padding-top: 5px;">Firma del Contador / Auditor</div>
+          <div style="border-top: 1px solid #000; width: 220px; text-align: center; padding-top: 5px;">Firma del Representante Legal</div>
+        </div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  }
+
+  // =========================================================================
+  // GESTIÓN DE COMPROBANTES FÍSICOS (NOTAS DE VENTA RIMPE, PEAJES, ETC.)
+  // =========================================================================
+
+  openPhysicalDocModal() {
+    const client = this.getActiveClient();
+    if (!client) {
+      if (typeof this.showBanner === 'function') {
+        this.showBanner('Selecciona un cliente antes de ingresar un comprobante físico.', 'warning');
+      }
+      return;
+    }
+
+    const year = this.state.year || (this.filterYear ? this.filterYear.value : String(new Date().getFullYear()));
+    const month = this.state.month || (this.filterMonth ? this.filterMonth.value : '01');
+    const monthNumMatch = String(month).match(/\b(\d{1,2})\b/);
+    const monthNum = monthNumMatch ? monthNumMatch[1].padStart(2, '0') : '01';
+
+    if (this.physFechaEmision) {
+      this.physFechaEmision.value = `01/${monthNum}/${year}`;
+    }
+    if (this.physBase0) this.physBase0.value = '0.00';
+    if (this.physBaseGravada) this.physBaseGravada.value = '0.00';
+    if (this.physIva) this.physIva.value = '0.00';
+
+    if (this.atsPhysicalDocModal) {
+      this.atsPhysicalDocModal.classList.add('active');
+    }
+  }
+
+  async savePhysicalDoc() {
+    const client = this.getActiveClient();
+    if (!client || !client.defaultFolder) return;
+
+    const ruc = (this.physRuc ? this.physRuc.value : '').trim();
+    const razonSocial = (this.physRazonSocial ? this.physRazonSocial.value : '').trim();
+    const serie = (this.physSerie ? this.physSerie.value : '').trim();
+    const fechaEmision = (this.physFechaEmision ? this.physFechaEmision.value : '').trim();
+    const tipoDoc = this.physDocType ? this.physDocType.value : '02';
+    const autorizacion = (this.physAutorizacion ? this.physAutorizacion.value : '').trim() || '1122334455';
+    const base0 = parseFloat(this.physBase0 ? this.physBase0.value : 0) || 0;
+    const baseGravada = parseFloat(this.physBaseGravada ? this.physBaseGravada.value : 0) || 0;
+    const montoIva = parseFloat(this.physIva ? this.physIva.value : 0) || 0;
+    const codSustento = this.physCodSustento ? this.physCodSustento.value : '02';
+    const formaPago = this.physFormaPago ? this.physFormaPago.value : '01';
+
+    if (!ruc || ruc.length < 10) {
+      alert('Ingresa un RUC o Cédula válido para el proveedor.');
+      return;
+    }
+    if (!razonSocial) {
+      alert('Ingresa la Razón Social del proveedor.');
+      return;
+    }
+
+    const year = this.state.year || (this.filterYear ? this.filterYear.value : String(new Date().getFullYear()));
+    const month = this.state.month || (this.filterMonth ? this.filterMonth.value : '01');
+
+    try {
+      const res = await this.api.savePhysicalDoc({
+        clientFolder: client.defaultFolder,
+        docData: {
+          tipoDoc,
+          fechaEmision,
+          ruc,
+          razonSocial,
+          serie,
+          autorizacion,
+          base0,
+          baseGravada,
+          montoIva,
+          codSustento,
+          formaPago,
+          year,
+          month
+        }
+      });
+
+      if (res && res.success) {
+        if (this.atsPhysicalDocModal) {
+          this.atsPhysicalDocModal.classList.remove('active');
+        }
+        if (typeof this.showBanner === 'function') {
+          this.showBanner('Comprobante físico guardado e integrado al ATS correctamente.', 'success');
+        }
+        await this.loadPeriodComprobantes();
+      } else {
+        alert('Error al guardar el comprobante físico: ' + (res ? res.error : 'Desconocido'));
+      }
+    } catch (err) {
+      alert('Error guardando comprobante: ' + err.message);
+    }
+  }
+
+  async deletePhysicalDoc(docId) {
+    const client = this.getActiveClient();
+    if (!client || !client.defaultFolder || !docId) return;
+
+    if (!confirm('¿Estás seguro de eliminar este comprobante físico del período?')) return;
+
+    try {
+      const res = await this.api.deletePhysicalDoc({
+        clientFolder: client.defaultFolder,
+        docId
+      });
+      if (res && res.success) {
+        if (typeof this.showBanner === 'function') {
+          this.showBanner('Comprobante físico eliminado del período.', 'info');
+        }
+        await this.loadPeriodComprobantes();
+      }
+    } catch (err) {
+      alert('Error eliminando comprobante: ' + err.message);
+    }
   }
 
   _escapeHtml(str) {
