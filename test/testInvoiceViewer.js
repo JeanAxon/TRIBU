@@ -100,15 +100,54 @@ try {
   assert.strictEqual(parsed.valores.baseGravada, 10.0, 'Base gravada correcta');
   assert.strictEqual(parsed.valores.montoIva, 1.50, 'Monto IVA correcto');
   assert.strictEqual(parsed.valores.total, 12.00, 'Importe total correcto');
+  assert.strictEqual(parsed.valores.totalSinImpuestos, 10.00, 'Total sin impuestos correcto');
 
-  console.log('[OK] Extracción de datos de factura SRI (ítems, adicionales, emisor) validada');
+  // Validar pagos estructurados
+  assert(Array.isArray(parsed.pagos), 'parsed.pagos debe ser un array');
+  assert.strictEqual(parsed.pagos.length, 1, 'Debe registrar 1 forma de pago');
+  assert.strictEqual(parsed.pagos[0].formaPago, '20', 'Forma de pago 20');
+  assert.strictEqual(parsed.pagos[0].total, 12.00, 'Monto de pago 12.00');
 
-  // Validar que index.html contiene el modal flotante
+  console.log('[OK] Extracción de datos de factura SRI (ítems, adicionales, emisor, pagos) validada');
+
+  // Validar renderizado RIDE formato simple SRI
+  const AtsModuleView = require('../src/renderer/js/modules/atsModuleView');
+  global.document = {
+    getElementById: () => null,
+    createElement: () => ({ appendChild() {} })
+  };
+  const view = new AtsModuleView({});
+
+  // 1. Validar generador de código de barras Code 128
+  const barcodeSvg = view._generateBarcodeSvg(parsed.claveAcceso);
+  assert(barcodeSvg.startsWith('<svg'), 'Debe generar un SVG');
+  assert(barcodeSvg.includes('<rect'), 'Debe contener barras rect');
+  assert(barcodeSvg.includes('viewBox='), 'Debe tener atributo viewBox');
+  console.log('[OK] Código de barras Code 128 oficial generado en SVG');
+
+  // 2. Validar HTML de RIDE oficial del SRI
+  const rideHtml = view._renderInvoiceRideHtml(parsed);
+  assert(rideHtml.includes('ride-paper-sheet'), 'Debe usar la hoja de papel blanca');
+  assert(rideHtml.includes('ride-sri-header-grid'), 'Debe tener la cabecera en dos columnas SRI');
+  assert(rideHtml.includes('R.U.C.:'), 'Debe incluir el RUC');
+  assert(rideHtml.includes('NÚMERO DE AUTORIZACIÓN:'), 'Debe incluir número de autorización');
+  assert(rideHtml.includes('CLAVE DE ACCESO:'), 'Debe incluir clave de acceso');
+  assert(rideHtml.includes('SUBTOTAL 15%:'), 'Debe incluir subtotal con tarifa');
+  assert(rideHtml.includes('SUBTOTAL SIN IMPUESTOS:'), 'Debe incluir subtotal sin impuestos');
+  assert(rideHtml.includes('VALOR TOTAL:'), 'Debe incluir valor total');
+  assert(rideHtml.includes('LECHE ENTERA 1L'), 'Debe incluir detalle de ítem 1');
+  assert(rideHtml.includes('ARROZ FLOR 5KG'), 'Debe incluir detalle de ítem 2');
+  console.log('[OK] Renderizado RIDE simple en formato oficial SRI validado');
+
+  // Validar que index.html contiene el modal flotante con acciones de impresión y copiado
   const htmlContent = fs.readFileSync(path.join(__dirname, '../src/renderer/index.html'), 'utf8');
   assert(htmlContent.includes('id="invoiceViewerModal"'), 'index.html debe tener invoiceViewerModal');
   assert(htmlContent.includes('id="invoiceViewerBody"'), 'index.html debe tener invoiceViewerBody');
   assert(htmlContent.includes('id="btnDismissInvoiceViewer"'), 'index.html debe tener btnDismissInvoiceViewer');
-  console.log('[OK] Estructura modal flotante en index.html validada');
+  assert(htmlContent.includes('id="btnInvoicePrint"'), 'index.html debe tener btnInvoicePrint');
+  assert(htmlContent.includes('id="btnInvoiceCopyClave"'), 'index.html debe tener btnInvoiceCopyClave');
+  assert(htmlContent.includes('id="btnInvoiceOpenFolder"'), 'index.html debe tener btnInvoiceOpenFolder');
+  console.log('[OK] Estructura modal flotante y botones de impresión/copiado en index.html validados');
 
   console.log('--- Todas las pruebas del Visor de Factura pasaron con éxito ---');
 } finally {

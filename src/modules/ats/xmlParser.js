@@ -171,15 +171,23 @@ function parseXmlFile(filePath) {
 
     const totalDescuento = toFloat(infoDoc.totalDescuento || 0);
     const propina = toFloat(infoDoc.propina || 0);
+    const totalSinImpuestos = toFloat(infoDoc.totalSinImpuestos || (base0 + baseGravada + baseNoObjeto + baseExenta));
 
     // Formas de pago
     let formaPago = '20'; // Por defecto: Otros con utilización del sistema financiero
     let formaPagoDescripcion = 'Otros con utilización del sistema financiero';
+    let pagosList = [];
     if (infoDoc.pagos && infoDoc.pagos.pago) {
       let pagos = infoDoc.pagos.pago;
       if (!Array.isArray(pagos)) pagos = [pagos];
-      if (pagos.length > 0 && pagos[0].formaPago) {
-        formaPago = String(pagos[0].formaPago).padStart(2, '0');
+      pagosList = pagos.map(p => ({
+        formaPago: String(p.formaPago || '20').padStart(2, '0'),
+        total: toFloat(p.total || total),
+        plazo: p.plazo ? String(p.plazo) : '0',
+        unidadTiempo: p.unidadTiempo ? String(p.unidadTiempo) : 'días'
+      }));
+      if (pagosList.length > 0 && pagosList[0].formaPago) {
+        formaPago = pagosList[0].formaPago;
       }
     }
 
@@ -290,6 +298,7 @@ function parseXmlFile(filePath) {
         baseGravada: toFloat(baseGravada),
         baseNoObjeto: toFloat(baseNoObjeto),
         baseExenta: toFloat(baseExenta),
+        totalSinImpuestos: toFloat(totalSinImpuestos),
         montoIva: toFloat(montoIva),
         montoIce: toFloat(montoIce),
         tarifaIvaPorcentaje,
@@ -300,7 +309,8 @@ function parseXmlFile(filePath) {
       detalles: items,
       infoAdicional,
       codSustento,
-      formaPago
+      formaPago,
+      pagos: pagosList
     };
   } catch (err) {
     return {
