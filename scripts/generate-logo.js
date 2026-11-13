@@ -1,6 +1,8 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const pkg = require('../package.json');
+const pkgVersion = pkg.version;
 
 app.whenReady().then(async () => {
   const win = new BrowserWindow({
@@ -245,19 +247,27 @@ app.whenReady().then(async () => {
           ctx.letterSpacing = '3px';
           ctx.fillText('ASISTENTE CONTABLE & SRI ECUADOR', textX + 4, h * 0.69);
 
-          // Badge "ALPHA"
+          // Badge de Versión
+          const versionTag = 'v${pkgVersion}';
+          ctx.font = '800 ' + (h * 0.075) + 'px "Segoe UI", system-ui, sans-serif';
+          const textMetrics = ctx.measureText(versionTag);
+          const padX = h * 0.05;
+          const bW = Math.max(h * 0.22, textMetrics.width + (padX * 2));
+          const bH = h * 0.12;
           const badgeX = textX + (h * 1.15);
           const badgeY = h * 0.26;
-          ctx.fillStyle = '#e8f0fe';
-          const bW = h * 0.28;
-          const bH = h * 0.12;
+
+          ctx.fillStyle = '#e0f2fe';
           ctx.beginPath();
           ctx.roundRect ? ctx.roundRect(badgeX, badgeY, bW, bH, bH * 0.4) : ctx.rect(badgeX, badgeY, bW, bH);
           ctx.fill();
 
-          ctx.fillStyle = '#0c4597';
-          ctx.font = '800 ' + (h * 0.075) + 'px "Segoe UI", system-ui, sans-serif';
-          ctx.fillText('v0.1.0 ALPHA', badgeX + (bW * 0.14), badgeY + (bH * 0.72));
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = '#38bdf8';
+          ctx.stroke();
+
+          ctx.fillStyle = '#0284c7';
+          ctx.fillText(versionTag, badgeX + (bW - textMetrics.width) / 2, badgeY + (bH * 0.72));
           ctx.restore();
         }
 
