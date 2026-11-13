@@ -1581,23 +1581,50 @@ body {
   overflow: hidden;
 }
 
+/* Utilidad para elementos accesibles solo para lectores de pantalla */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Barra de Filtros y Acciones ATS (Diseño Moderno de Alta Precisión) */
 .ats-toolbar {
   background-color: var(--card);
   border-bottom: 1px solid var(--border);
-  padding: 12px 20px;
+  padding: 8px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 10px;
   flex-shrink: 0;
-  flex-wrap: wrap;
+  min-height: 50px;
 }
 
-.ats-filters-group {
+.ats-toolbar-left {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ats-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ats-btn-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 /* Control Segmentado Moderno para Categoría (Compras / Ventas) */
@@ -1607,16 +1634,16 @@ body {
   background-color: var(--secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 3px;
+  padding: 2px;
   gap: 2px;
 }
 
 .ats-segment-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   height: 30px;
-  padding: 0 12px;
+  padding: 0 10px;
   border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 500;
@@ -1648,9 +1675,9 @@ body {
   background-color: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  height: 36px;
-  padding: 0 10px;
-  gap: 6px;
+  height: 32px;
+  padding: 0 7px;
+  gap: 3px;
   box-shadow: var(--shadow-xs);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -1662,36 +1689,42 @@ body {
 
 .ats-period-icon {
   color: var(--muted-foreground);
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  margin-right: 1px;
 }
 
 .ats-period-separator {
   color: var(--muted-foreground);
-  opacity: 0.6;
-  font-size: 13px;
+  opacity: 0.5;
+  font-size: 12px;
   font-weight: 600;
+  user-select: none;
+  padding: 0 1px;
 }
 
 .ats-select-wrapper {
   display: inline-flex;
   align-items: center;
+  position: relative;
 }
 
-.ats-select-period {
-  background: transparent;
-  border: none;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--foreground);
+.ats-period-picker-card select.ats-select-period {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--foreground) !important;
   cursor: pointer;
-  padding: 0 4px;
-  outline: none;
-  height: 100%;
+  padding: 0 3px !important;
+  height: 28px !important;
+  line-height: 28px !important;
 }
 
-.ats-select-month {
-  min-width: 125px;
+.ats-period-picker-card select.ats-select-month {
+  min-width: 105px;
 }
 
 .ats-select-period option {
@@ -1703,18 +1736,18 @@ body {
 .ats-toggle-chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background-color: var(--secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
-  padding: 4px 12px 4px 6px;
-  height: 36px;
+  padding: 2px 9px 2px 4px;
+  height: 32px;
   cursor: pointer;
   user-select: none;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   color: var(--foreground);
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .ats-toggle-chip:hover {
@@ -1731,33 +1764,36 @@ body {
 }
 
 .ats-toggle-track {
-  width: 28px;
-  height: 16px;
-  background-color: var(--muted);
+  width: 26px;
+  height: 15px;
+  background-color: #cbd5e1;
+  border: 1px solid #94a3b8;
   border-radius: 9999px;
   position: relative;
-  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-block;
+  flex-shrink: 0;
 }
 
 .ats-toggle-thumb {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
+  top: 1px;
+  left: 1px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background-color: #ffffff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .ats-toggle-input:checked + .ats-toggle-track {
   background-color: var(--primary);
+  border-color: var(--primary);
 }
 
 .ats-toggle-input:checked + .ats-toggle-track .ats-toggle-thumb {
-  transform: translateX(12px);
+  transform: translateX(11px);
 }
 
 .ats-toggle-input:checked ~ .ats-toggle-text {
@@ -1765,21 +1801,15 @@ body {
   font-weight: 600;
 }
 
-/* Agrupaciones y Botones de Acción de la Barra ATS */
-.ats-button-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
+/* Botones de Acción de la Barra ATS */
 .ats-action-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 12px;
+  gap: 5px;
+  height: 32px;
+  padding: 0 10px;
   border-radius: var(--radius-md);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1788,16 +1818,9 @@ body {
 
 .ats-toolbar-divider {
   width: 1px;
-  height: 26px;
+  height: 20px;
   background-color: var(--border);
-  margin: 0 2px;
-}
-
-.ats-actions-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  margin: 0 3px;
 }
 
 .ats-btn-primary {
@@ -1805,13 +1828,13 @@ body {
   color: #ffffff !important;
   border: 1px solid #047857 !important;
   font-weight: 600 !important;
-  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.25);
 }
 
 .ats-btn-primary:hover {
   background: linear-gradient(135deg, #047857 0%, #059669 100%) !important;
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px -1px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 3px 6px rgba(16, 185, 129, 0.35);
 }
 
 .ats-btn-ceros {
@@ -1822,6 +1845,25 @@ body {
   border-style: solid !important;
   border-color: var(--input);
   color: var(--primary);
+}
+
+@media (max-width: 1180px) {
+  .ats-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 16px;
+  }
+  .ats-toolbar-left {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .ats-toolbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .ats-toolbar-divider {
+    display: none;
+  }
 }
 
 /* Select Genérico de Respaldo */
