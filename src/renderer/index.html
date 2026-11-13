@@ -149,9 +149,9 @@
     <!-- Secciones de Navegación: Clientes, SRI, ATS, Declaración IVA (Centradas en el encabezado) -->
     <nav class="header-nav-tabs">
       <button id="navSectionClientes" class="nav-tab-btn active" data-section="clientes">Clientes</button>
-      <button id="navSectionSri" class="nav-tab-btn" data-section="sri">SRI</button>
-      <button id="navSectionAts" class="nav-tab-btn" data-section="ats">ATS</button>
-      <button id="navSectionIva" class="nav-tab-btn" data-section="iva">Declaración IVA</button>
+      <button id="navSectionSri" class="nav-tab-btn" data-section="sri" style="display: none;">SRI</button>
+      <button id="navSectionAts" class="nav-tab-btn" data-section="ats" style="display: none;">ATS</button>
+      <button id="navSectionIva" class="nav-tab-btn" data-section="iva" style="display: none;">Declaración IVA</button>
     </nav>
 
     <!-- Espacio Derecho: Indicador de Versión y Campana de Notificaciones -->
@@ -239,8 +239,8 @@
               <span id="totalClientsCount">0</span> clientes
             </div>
 
-            <!-- Botón exclusivo para agregar nuevo cliente -->
-            <button id="btnAddNewClient" class="btn btn-primary">
+            <!-- Botón exclusivo para agregar nuevo cliente (trasladado a tarjeta cuadrangular en el grid) -->
+            <button id="btnAddNewClient" class="btn btn-primary" style="display: none;" aria-hidden="true">
               + Nuevo Cliente
             </button>
 

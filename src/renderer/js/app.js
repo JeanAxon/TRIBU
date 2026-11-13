@@ -499,6 +499,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Inicializar preferencia de tema de inmediato
   initTheme();
 
+  // Control dinámico de visibilidad de las secciones (solo visibles con sesión activa o tras primer registro)
+  function updateNavigationTabsVisibility() {
+    const hasActiveSession = Boolean(state.activeClient);
+    if (navSectionSri) {
+      navSectionSri.style.display = hasActiveSession ? '' : 'none';
+    }
+    if (navSectionAts) {
+      navSectionAts.style.display = hasActiveSession ? '' : 'none';
+    }
+    if (navSectionIva) {
+      navSectionIva.style.display = hasActiveSession ? '' : 'none';
+    }
+    if (!hasActiveSession && state.activeSection !== 'clientes') {
+      switchMainSection('clientes');
+    }
+  }
+
   function updateHeaderClientDisplay(client) {
     if (client) {
       topbarClientName.textContent = client.razonSocial;
@@ -510,6 +527,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       userStatusDot.classList.remove('active');
     }
     renderUserDropdown();
+    updateNavigationTabsVisibility();
   }
 
   // -------------------------------------------------------------
@@ -733,18 +751,49 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     totalClientsCount.textContent = state.clients.length;
 
-    if (state.clients.length === 0) {
-      emptyState.style.display = 'block';
-      clientsGrid.style.display = 'none';
-      return;
-    }
-
     emptyState.style.display = 'none';
     clientsGrid.style.display = 'grid';
     clientsGrid.innerHTML = '';
 
-    if (filtered.length === 0) {
-      clientsGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--muted-foreground); padding: 40px 20px; font-size: 13.5px;">No se encontraron clientes para "<strong>${escapeHtml(filterText)}</strong>".</div>`;
+    // 1. Botón de Agregar Nuevo Cliente como primer elemento (cuadrado entrecortado con signo más central)
+    const addCard = document.createElement('div');
+    addCard.className = 'client-card client-card-add';
+    addCard.id = 'btnAddNewClientCard';
+    addCard.role = 'button';
+    addCard.tabIndex = 0;
+    addCard.title = 'Registrar nuevo cliente';
+    addCard.setAttribute('aria-label', 'Registrar nuevo cliente');
+    addCard.innerHTML = `
+      <div class="card-add-inner">
+        <div class="card-add-icon-box">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </div>
+        <div class="card-add-text-group">
+          <span class="card-add-title">Nuevo Cliente</span>
+          <span class="card-add-desc">${state.clients.length === 0 ? 'Registrar primer contribuyente' : 'Registrar contribuyente'}</span>
+        </div>
+      </div>
+    `;
+
+    addCard.addEventListener('click', openCreateClientModal);
+    addCard.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openCreateClientModal();
+      }
+    });
+
+    clientsGrid.appendChild(addCard);
+
+    if (filtered.length === 0 && state.clients.length > 0) {
+      const noResults = document.createElement('div');
+      noResults.className = 'clients-no-results';
+      noResults.style.cssText = 'grid-column: 2 / -1; display: flex; align-items: center; justify-content: center; color: var(--muted-foreground); padding: 40px 20px; font-size: 13.5px;';
+      noResults.innerHTML = `No se encontraron clientes para "<strong>${escapeHtml(filterText)}</strong>".`;
+      clientsGrid.appendChild(noResults);
       return;
     }
 
@@ -1138,6 +1187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // -------------------------------------------------------------
   async function startClientSession(client) {
     state.activeClient = client;
+    updateHeaderClientDisplay(client);
 
     if (!client.hasPassword) {
       state.pendingClientForSession = client;
@@ -2560,6 +2610,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Inicialización de la aplicación
+  updateNavigationTabsVisibility();
   await loadBaseFolder();
   await loadClients();
 });
