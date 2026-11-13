@@ -36,6 +36,7 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       webviewTag: true,
+      plugins: true,
       nodeIntegration: false,
       contextIsolation: true,
       spellcheck: false
@@ -116,6 +117,32 @@ function setupIpcHandlers() {
 
   ipcMain.handle('download:get-stats', async () => {
     return downloadManager.getStats();
+  });
+
+  ipcMain.handle('download:set-bulk-mode', async (event, isBulk) => {
+    if (downloadManager) {
+      downloadManager.setBulkMode(isBulk);
+    }
+    return true;
+  });
+
+  ipcMain.handle('preview:save-file', async (event, params) => {
+    if (downloadManager) {
+      return downloadManager.savePreviewFile(params);
+    }
+    throw new Error('DownloadManager no inicializado');
+  });
+
+  ipcMain.handle('shell:open-path', async (event, filePath) => {
+    if (filePath) {
+      await shell.openPath(filePath);
+      return true;
+    }
+    return false;
+  });
+
+  ipcMain.handle('sri:get-ride-interceptor-script', async () => {
+    return getAutomationModule().getSriRideInterceptorScript();
   });
 
   // Función auxiliar para obtener scripts frescos sin problemas de caché de Node.js

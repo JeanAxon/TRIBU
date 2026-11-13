@@ -1999,6 +1999,76 @@ function getSetVentasDateAndSearchScript(dateStr) {
   return '(' + fn.toString() + ')(' + JSON.stringify(dateStr) + ');';
 }
 
+// Script inyectado en el webview para detectar clics en botones de RIDE (PDF) o XML en tablas SRI
+function getSriRideInterceptorScript() {
+  const fn = function() {
+    if (window.__tribuRideInterceptorInstalled) return;
+    window.__tribuRideInterceptorInstalled = true;
+
+    document.addEventListener('click', function(e) {
+      const target = e.target;
+      if (!target) return;
+
+      const el = target.closest('a, button, input[type="image"], img, [onclick], [role="button"]') || target;
+      
+      const title = (el.getAttribute('title') || '').toLowerCase();
+      const alt = (el.getAttribute('alt') || '').toLowerCase();
+      const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+      const text = (el.innerText || el.textContent || '').trim().toLowerCase();
+      const src = (el.getAttribute('src') || '').toLowerCase();
+      const onclickStr = (el.getAttribute('onclick') || '').toLowerCase();
+      const idStr = (el.id || '').toLowerCase();
+
+      const isRide = title.includes('ride') || alt.includes('ride') || aria.includes('ride') || text === 'ride' || text.includes('ride') || src.includes('pdf') || onclickStr.includes('ride') || idStr.includes('ride');
+      const isXml = title.includes('xml') || alt.includes('xml') || aria.includes('xml') || text === 'xml' || text.includes('xml') || src.includes('xml') || onclickStr.includes('xml') || idStr.includes('xml');
+
+      let colIsRide = false;
+      let colIsXml = false;
+      const td = el.closest('td');
+      if (td) {
+        const table = td.closest('table, p-table, .ui-table, .ui-datatable');
+        if (table) {
+          const cellIndex = Array.from(td.parentNode.children).indexOf(td);
+          const ths = Array.from(table.querySelectorAll('thead th, .ui-datatable-header th, tr th'));
+          if (cellIndex >= 0 && ths.length > cellIndex) {
+            const headerText = (ths[cellIndex].innerText || ths[cellIndex].textContent || '').trim().toLowerCase();
+            if (headerText.includes('ride')) colIsRide = true;
+            if (headerText.includes('xml')) colIsXml = true;
+          }
+        }
+      }
+
+      if (isRide || colIsRide || isXml || colIsXml) {
+        const type = (isRide || colIsRide) ? 'ride' : 'xml';
+        const row = el.closest('tr');
+        let clave = null;
+        let fecha = null;
+        let serie = null;
+        if (row) {
+          const rowText = row.innerText || '';
+          const claveMatch = rowText.match(/\b\d{49}\b/);
+          if (claveMatch) clave = claveMatch[0];
+          const dateMatch = rowText.match(/\b(\d{2})[/-](\d{2})[/-](\d{4})\b/);
+          if (dateMatch) fecha = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+          const cells = row.querySelectorAll('td');
+          if (cells.length > 2) {
+            serie = cells[1].innerText.trim() || cells[2].innerText.trim();
+          }
+        }
+
+        console.log('__TRIBU_RIDE_INTERCEPT__:' + JSON.stringify({
+          type: type,
+          clave: clave,
+          fecha: fecha,
+          serie: serie
+        }));
+      }
+    }, true);
+  };
+
+  return '(' + fn.toString() + ')();';
+}
+
 module.exports = {
   getLoginScript,
   getPasswordCaptureScript,
@@ -2014,5 +2084,6 @@ module.exports = {
   getFillDeclaracionCasillerosScript,
   getNavigateToSriSectionScript,
   getVentasFilterInfoScript,
-  getSetVentasDateAndSearchScript
+  getSetVentasDateAndSearchScript,
+  getSriRideInterceptorScript
 };

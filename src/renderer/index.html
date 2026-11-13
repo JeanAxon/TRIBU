@@ -1204,6 +1204,14 @@
           </div>
         </div>
         <div class="invoice-header-actions">
+          <button type="button" class="btn-invoice-action btn-invoice-action-download" id="btnInvoiceDownload" title="Descargar y guardar este comprobante en la carpeta del cliente">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span id="btnInvoiceDownloadLabel">Descargar</span>
+          </button>
           <button type="button" class="btn-invoice-action" id="btnInvoiceCopyClave" title="Copiar clave de acceso al portapapeles">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -1219,7 +1227,7 @@
             </svg>
             <span>Imprimir / PDF</span>
           </button>
-          <button type="button" class="btn-invoice-action" id="btnInvoiceOpenFolder" title="Mostrar archivo XML en su carpeta">
+          <button type="button" class="btn-invoice-action" id="btnInvoiceOpenFolder" title="Mostrar archivo en su carpeta">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
             </svg>
@@ -1240,7 +1248,17 @@
 
       <div class="modal-footer invoice-modal-footer">
         <span class="invoice-esc-hint">Pulsa <kbd>Esc</kbd> o haz clic afuera para cerrar rápidamente</span>
-        <button type="button" id="btnDismissInvoiceViewer" class="btn btn-secondary">Cerrar Visor</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" id="btnFooterInvoiceDownload" class="btn btn-success" style="display: inline-flex; align-items: center; gap: 6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span id="btnFooterInvoiceDownloadLabel">Descargar Comprobante</span>
+          </button>
+          <button type="button" id="btnDismissInvoiceViewer" class="btn btn-secondary">Cerrar Visor</button>
+        </div>
       </div>
     </div>
   </div>

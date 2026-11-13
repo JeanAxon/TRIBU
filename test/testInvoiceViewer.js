@@ -139,7 +139,7 @@ try {
   assert(rideHtml.includes('ARROZ FLOR 5KG'), 'Debe incluir detalle de ítem 2');
   console.log('[OK] Renderizado RIDE simple en formato oficial SRI validado');
 
-  // Validar que index.html contiene el modal flotante con acciones de impresión y copiado
+  // Validar que index.html contiene el modal flotante con acciones de impresión, copiado y descarga
   const htmlContent = fs.readFileSync(path.join(__dirname, '../src/renderer/index.html'), 'utf8');
   assert(htmlContent.includes('id="invoiceViewerModal"'), 'index.html debe tener invoiceViewerModal');
   assert(htmlContent.includes('id="invoiceViewerBody"'), 'index.html debe tener invoiceViewerBody');
@@ -147,7 +147,41 @@ try {
   assert(htmlContent.includes('id="btnInvoicePrint"'), 'index.html debe tener btnInvoicePrint');
   assert(htmlContent.includes('id="btnInvoiceCopyClave"'), 'index.html debe tener btnInvoiceCopyClave');
   assert(htmlContent.includes('id="btnInvoiceOpenFolder"'), 'index.html debe tener btnInvoiceOpenFolder');
-  console.log('[OK] Estructura modal flotante y botones de impresión/copiado en index.html validados');
+  assert(htmlContent.includes('id="btnInvoiceDownload"'), 'index.html debe tener btnInvoiceDownload');
+  assert(htmlContent.includes('id="btnFooterInvoiceDownload"'), 'index.html debe tener btnFooterInvoiceDownload');
+  console.log('[OK] Estructura modal flotante y botones de descarga/impresión/copiado en index.html validados');
+
+  // 3. Validar script de interceptación de botones RIDE / XML en SRI
+  const sriAutomation = require('../src/injected/sriAutomation');
+  const interceptorScript = sriAutomation.getSriRideInterceptorScript();
+  assert(typeof interceptorScript === 'string' && interceptorScript.includes('__TRIBU_RIDE_INTERCEPT__'), 'Script de interceptación RIDE debe estar definido');
+  console.log('[OK] Script de interceptación RIDE y XML para el webview validado');
+
+  // 4. Validar DownloadManager: soporte de previsualización e interceptación
+  const DownloadManager = require('../src/main/downloadManager');
+  const fakeWin = { isDestroyed: () => false, webContents: { send: () => {} } };
+  const dm = new DownloadManager(fakeWin);
+  assert.strictEqual(dm.isBulkMode, false, 'Modo inicial debe ser interactivo (no masivo)');
+  dm.setBulkMode(true);
+  assert.strictEqual(dm.isBulkMode, true, 'setBulkMode(true) debe activar modo masivo');
+  dm.setBulkMode(false);
+  assert.strictEqual(dm.isBulkMode, false, 'setBulkMode(false) debe volver a modo interactivo');
+
+  // Validar guardado permanente de archivo desde vista previa
+  const testPreviewTemp = path.join(tmpDir, 'preview_temp_factura.xml');
+  fs.writeFileSync(testPreviewTemp, sampleInvoiceXml, 'utf8');
+  const targetTestClientFolder = path.join(tmpDir, 'Cliente_Test');
+  const savedRes = dm.savePreviewFile({
+    tempPath: testPreviewTemp,
+    fileName: '2026-11-11 - TIENDAS TIA - 001-002-000012345.xml',
+    category: 'Compras',
+    year: '2026',
+    month: '11 - Noviembre',
+    customDestination: path.join(targetTestClientFolder, 'Compras', '2026', '11 - Noviembre')
+  });
+  assert(savedRes.success === true, 'El guardado de vista previa debe tener éxito');
+  assert(fs.existsSync(savedRes.savedPath), 'El archivo guardado debe existir en el destino');
+  console.log('[OK] Guardado organizado de archivo desde vista previa en DownloadManager validado');
 
   console.log('--- Todas las pruebas del Visor de Factura pasaron con éxito ---');
 } finally {

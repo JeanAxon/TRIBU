@@ -22,6 +22,9 @@ contextBridge.exposeInMainWorld('tribuApi', {
   configureDownloadTarget: (config) => ipcRenderer.invoke('download:set-target', config),
   setDownloadCategory: (category) => ipcRenderer.invoke('download:set-category', category),
   setExpectedFileInfo: (info) => ipcRenderer.invoke('download:set-expected-info', info),
+  setBulkDownloadMode: (isBulk) => ipcRenderer.invoke('download:set-bulk-mode', isBulk),
+  savePreviewFile: (params) => ipcRenderer.invoke('preview:save-file', params),
+  openPath: (p) => ipcRenderer.invoke('shell:open-path', p),
   resetDownloadStats: () => ipcRenderer.invoke('download:reset-stats'),
   getDownloadStats: () => ipcRenderer.invoke('download:get-stats'),
 
@@ -42,6 +45,7 @@ contextBridge.exposeInMainWorld('tribuApi', {
   getNavigateSriScript: (target) => ipcRenderer.invoke('sri:get-navigate-script', target),
   getVentasFilterInfoScript: () => ipcRenderer.invoke('sri:get-ventas-filter-info-script'),
   getSetVentasDateAndSearchScript: (dateStr) => ipcRenderer.invoke('sri:get-set-ventas-date-script', dateStr),
+  getSriRideInterceptorScript: () => ipcRenderer.invoke('sri:get-ride-interceptor-script'),
   saveEmittedInvoiceXml: (data) => ipcRenderer.invoke('sri:save-emitted-invoice-xml', data),
   dumpDebug: (data) => ipcRenderer.invoke('sri:dump-debug', data),
 
@@ -87,6 +91,23 @@ contextBridge.exposeInMainWorld('tribuApi', {
     const handler = (event, data) => callback(data);
     ipcRenderer.on('download-stats-update', handler);
     return () => ipcRenderer.removeListener('download-stats-update', handler);
+  },
+
+  // Interceptación de Vista Previa de Comprobantes (RIDE / XML)
+  onPreviewLoading: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('preview:loading', handler);
+    return () => ipcRenderer.removeListener('preview:loading', handler);
+  },
+  onPreviewShow: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('preview:show', handler);
+    return () => ipcRenderer.removeListener('preview:show', handler);
+  },
+  onPreviewError: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('preview:error', handler);
+    return () => ipcRenderer.removeListener('preview:error', handler);
   },
 
   // Sistema de Actualizaciones Automáticas y Versión

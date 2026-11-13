@@ -3269,6 +3269,43 @@ body.theme-dark .user-dropdown-item.active {
   color: var(--foreground);
 }
 
+.btn-invoice-action.btn-invoice-action-download {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.35);
+  font-weight: 600;
+}
+
+.btn-invoice-action.btn-invoice-action-download:hover {
+  background-color: #059669;
+  color: #ffffff;
+  border-color: #047857;
+}
+
+.btn-invoice-action.btn-invoice-action-download.saved {
+  background-color: #10b981;
+  color: #ffffff;
+  border-color: #059669;
+}
+
+.invoice-pdf-wrapper {
+  width: 100%;
+  height: calc(88vh - 170px);
+  min-height: 520px;
+  background-color: #334155;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  display: flex;
+}
+
+.invoice-pdf-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background-color: #ffffff;
+}
+
 .invoice-modal-body {
   padding: 24px 20px;
   overflow-y: auto;

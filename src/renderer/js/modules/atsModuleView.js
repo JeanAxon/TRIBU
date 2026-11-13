@@ -88,13 +88,22 @@ class AtsModuleView {
     // Modal Flotante de Factura Electrónica (RIDE)
     this.invoiceViewerModal = document.getElementById('invoiceViewerModal');
     this.invoiceViewerBody = document.getElementById('invoiceViewerBody');
+    this.invoiceViewerTitle = document.getElementById('invoiceViewerTitle');
     this.invViewerDocBadge = document.getElementById('invViewerDocBadge');
     this.invViewerSerie = document.getElementById('invViewerSerie');
     this.btnInvoicePrint = document.getElementById('btnInvoicePrint');
     this.btnInvoiceCopyClave = document.getElementById('btnInvoiceCopyClave');
     this.btnInvoiceOpenFolder = document.getElementById('btnInvoiceOpenFolder');
+    this.btnInvoiceDownload = document.getElementById('btnInvoiceDownload');
+    this.btnInvoiceDownloadLabel = document.getElementById('btnInvoiceDownloadLabel');
+    this.btnFooterInvoiceDownload = document.getElementById('btnFooterInvoiceDownload');
+    this.btnFooterInvoiceDownloadLabel = document.getElementById('btnFooterInvoiceDownloadLabel');
     this.btnCloseInvoiceViewer = document.getElementById('btnCloseInvoiceViewer');
     this.btnDismissInvoiceViewer = document.getElementById('btnDismissInvoiceViewer');
+
+    this.currentPreviewData = null;
+    this.currentSavedPath = null;
+    this.currentInvoiceClave = '';
   }
 
   _bindEvents() {
@@ -202,6 +211,18 @@ class AtsModuleView {
     if (this.btnDismissInvoiceViewer) {
       this.btnDismissInvoiceViewer.addEventListener('click', () => {
         this.closeInvoiceViewer();
+      });
+    }
+
+    if (this.btnInvoiceDownload) {
+      this.btnInvoiceDownload.addEventListener('click', () => {
+        this.downloadCurrentPreview();
+      });
+    }
+
+    if (this.btnFooterInvoiceDownload) {
+      this.btnFooterInvoiceDownload.addEventListener('click', () => {
+        this.downloadCurrentPreview();
       });
     }
 
@@ -960,17 +981,35 @@ class AtsModuleView {
     if (!this.invoiceViewerModal) {
       this.invoiceViewerModal = document.getElementById('invoiceViewerModal');
       this.invoiceViewerBody = document.getElementById('invoiceViewerBody');
+      this.invoiceViewerTitle = document.getElementById('invoiceViewerTitle');
       this.invViewerDocBadge = document.getElementById('invViewerDocBadge');
       this.invViewerSerie = document.getElementById('invViewerSerie');
       this.btnInvoicePrint = document.getElementById('btnInvoicePrint');
       this.btnInvoiceCopyClave = document.getElementById('btnInvoiceCopyClave');
       this.btnInvoiceOpenFolder = document.getElementById('btnInvoiceOpenFolder');
+      this.btnInvoiceDownload = document.getElementById('btnInvoiceDownload');
+      this.btnInvoiceDownloadLabel = document.getElementById('btnInvoiceDownloadLabel');
+      this.btnFooterInvoiceDownload = document.getElementById('btnFooterInvoiceDownload');
+      this.btnFooterInvoiceDownloadLabel = document.getElementById('btnFooterInvoiceDownloadLabel');
     }
 
     if (!this.invoiceViewerModal || !this.invoiceViewerBody) return;
 
     const claveAcceso = item.claveAcceso || item.numeroAutorizacion || '';
+    this.currentInvoiceClave = claveAcceso;
+    this.currentSavedPath = item.filePath || null;
+    this.currentPreviewData = {
+      fileType: 'xml',
+      parsedItem: item,
+      tempPath: item.filePath || null,
+      fileName: (item.serie || 'comprobante') + '.xml',
+      claveAcceso: claveAcceso,
+      category: this.filterCategory ? this.filterCategory.value : 'Compras'
+    };
 
+    if (this.invoiceViewerTitle) {
+      this.invoiceViewerTitle.textContent = `${item.tipoDocNombre || 'Factura'} Electrónica`;
+    }
     if (this.invViewerDocBadge) {
       this.invViewerDocBadge.textContent = item.tipoDocNombre || 'FACTURA';
     }
@@ -997,15 +1036,240 @@ class AtsModuleView {
     }
 
     if (this.btnInvoiceOpenFolder) {
+      this.btnInvoiceOpenFolder.style.display = this.currentSavedPath ? 'inline-flex' : 'none';
       this.btnInvoiceOpenFolder.onclick = () => {
-        if (item.filePath && this.api && typeof this.api.showItemInFolder === 'function') {
-          this.api.showItemInFolder(item.filePath);
+        if (this.currentSavedPath && this.api && typeof this.api.showItemInFolder === 'function') {
+          this.api.showItemInFolder(this.currentSavedPath);
         }
       };
     }
 
+    // Como ya está guardado en disco, el estado es 'saved'
+    this._updateDownloadButtonsState(this.currentSavedPath ? 'saved' : false, 'xml');
+
     this.invoiceViewerBody.innerHTML = this._renderInvoiceRideHtml(item);
     this.invoiceViewerModal.classList.add('active');
+  }
+
+  /**
+   * Abre la vista previa interceptada desde el SRI (PDF o XML)
+   */
+  async openInvoicePreview(previewData) {
+    if (!previewData) return;
+
+    if (!this.invoiceViewerModal) {
+      this.invoiceViewerModal = document.getElementById('invoiceViewerModal');
+      this.invoiceViewerBody = document.getElementById('invoiceViewerBody');
+      this.invoiceViewerTitle = document.getElementById('invoiceViewerTitle');
+      this.invViewerDocBadge = document.getElementById('invViewerDocBadge');
+      this.invViewerSerie = document.getElementById('invViewerSerie');
+      this.btnInvoicePrint = document.getElementById('btnInvoicePrint');
+      this.btnInvoiceCopyClave = document.getElementById('btnInvoiceCopyClave');
+      this.btnInvoiceOpenFolder = document.getElementById('btnInvoiceOpenFolder');
+      this.btnInvoiceDownload = document.getElementById('btnInvoiceDownload');
+      this.btnInvoiceDownloadLabel = document.getElementById('btnInvoiceDownloadLabel');
+      this.btnFooterInvoiceDownload = document.getElementById('btnFooterInvoiceDownload');
+      this.btnFooterInvoiceDownloadLabel = document.getElementById('btnFooterInvoiceDownloadLabel');
+    }
+
+    if (!this.invoiceViewerModal || !this.invoiceViewerBody) return;
+
+    this.currentPreviewData = previewData;
+    this.currentSavedPath = null;
+    this.currentInvoiceClave = previewData.claveAcceso || '';
+
+    // Estado inicial de botones: no guardado aún
+    this._updateDownloadButtonsState(false, previewData.fileType);
+
+    if (this.btnInvoiceOpenFolder) {
+      this.btnInvoiceOpenFolder.style.display = 'none';
+      this.btnInvoiceOpenFolder.onclick = () => {
+        if (this.currentSavedPath && this.api && typeof this.api.showItemInFolder === 'function') {
+          this.api.showItemInFolder(this.currentSavedPath);
+        }
+      };
+    }
+
+    if (this.btnInvoicePrint) {
+      this.btnInvoicePrint.onclick = () => {
+        window.print();
+      };
+    }
+
+    if (this.btnInvoiceCopyClave) {
+      this.btnInvoiceCopyClave.style.display = this.currentInvoiceClave ? 'inline-flex' : 'none';
+      this.btnInvoiceCopyClave.onclick = () => {
+        if (this.currentInvoiceClave && navigator.clipboard) {
+          navigator.clipboard.writeText(this.currentInvoiceClave).then(() => {
+            this.showBanner('Clave de acceso copiada al portapapeles', 'success', 2500);
+          }).catch(() => {
+            prompt('Clave de acceso:', this.currentInvoiceClave);
+          });
+        }
+      };
+    }
+
+    if (previewData.fileType === 'pdf') {
+      // Vista previa de PDF
+      if (this.invoiceViewerTitle) {
+        this.invoiceViewerTitle.textContent = 'Vista Previa de Comprobante (RIDE PDF)';
+      }
+      if (this.invViewerDocBadge) {
+        this.invViewerDocBadge.textContent = 'RIDE PDF';
+      }
+      if (this.invViewerSerie) {
+        this.invViewerSerie.textContent = previewData.serie || previewData.fileName || 'Comprobante PDF';
+      }
+
+      const fileUrl = 'file:///' + (previewData.tempPath || '').replace(/\\/g, '/');
+      this.invoiceViewerBody.innerHTML = `
+        <div class="invoice-pdf-wrapper">
+          <iframe src="${fileUrl}" class="invoice-pdf-frame" title="RIDE PDF Oficial SRI"></iframe>
+        </div>
+      `;
+    } else {
+      // Vista previa de XML
+      let item = previewData.parsedItem;
+      if (!item && previewData.tempPath && this.api && typeof this.api.parseSingleXml === 'function') {
+        try {
+          item = await this.api.parseSingleXml(previewData.tempPath);
+        } catch (e) {
+          console.error('Error parseando XML temporal:', e);
+        }
+      }
+
+      if (item && item.success !== false) {
+        this.currentPreviewData.parsedItem = item;
+        const clave = item.claveAcceso || item.numeroAutorizacion || previewData.claveAcceso || '';
+        this.currentInvoiceClave = clave;
+
+        if (this.invoiceViewerTitle) {
+          this.invoiceViewerTitle.textContent = `${item.tipoDocNombre || 'Factura'} Electrónica`;
+        }
+        if (this.invViewerDocBadge) {
+          this.invViewerDocBadge.textContent = (item.tipoDocNombre || 'FACTURA').toUpperCase();
+        }
+        if (this.invViewerSerie) {
+          this.invViewerSerie.textContent = `Nº ${item.serie || '000-000-000000000'}`;
+        }
+        if (this.btnInvoiceCopyClave) {
+          this.btnInvoiceCopyClave.style.display = clave ? 'inline-flex' : 'none';
+        }
+
+        this.invoiceViewerBody.innerHTML = this._renderInvoiceRideHtml(item);
+      } else {
+        if (this.invoiceViewerTitle) {
+          this.invoiceViewerTitle.textContent = 'Comprobante Electrónico (XML)';
+        }
+        if (this.invViewerDocBadge) {
+          this.invViewerDocBadge.textContent = 'XML';
+        }
+        if (this.invViewerSerie) {
+          this.invViewerSerie.textContent = previewData.fileName || '';
+        }
+        this.invoiceViewerBody.innerHTML = `
+          <div class="alert alert-info" style="margin: 30px auto; max-width: 600px; padding: 20px; background: white; border-radius: 8px;">
+            <h4 style="margin-top:0;">Archivo XML descargado para vista previa</h4>
+            <p>Nombre: <strong>${this._escapeHtml(previewData.fileName || '')}</strong></p>
+            <p>Puedes descargarlo a tu carpeta o imprimirlo utilizando los botones superiores.</p>
+          </div>
+        `;
+      }
+    }
+
+    this.invoiceViewerModal.classList.add('active');
+  }
+
+  /**
+   * Ejecuta la descarga del archivo comprobante que se está visualizando
+   */
+  async downloadCurrentPreview() {
+    if (!this.currentPreviewData || !this.currentPreviewData.tempPath) {
+      if (this.currentSavedPath) {
+        this.showBanner('El comprobante ya se encuentra guardado en disco', 'info', 2500);
+      }
+      return;
+    }
+
+    try {
+      this._updateDownloadButtonsState('loading', this.currentPreviewData.fileType);
+
+      const client = this.getActiveClient() || this.currentPreviewData.client;
+      const res = await this.api.savePreviewFile({
+        tempPath: this.currentPreviewData.tempPath,
+        fileName: this.currentPreviewData.fileName,
+        client: client,
+        category: this.currentPreviewData.category || (this.filterCategory ? this.filterCategory.value : 'Compras'),
+        year: this.currentPreviewData.year,
+        month: this.currentPreviewData.month,
+        claveAcceso: this.currentInvoiceClave
+      });
+
+      if (res && res.success) {
+        this.currentSavedPath = res.savedPath;
+        this._updateDownloadButtonsState('saved', this.currentPreviewData.fileType);
+
+        if (this.btnInvoiceOpenFolder) {
+          this.btnInvoiceOpenFolder.style.display = 'inline-flex';
+        }
+
+        this.showBanner(`Comprobante guardado exitosamente en: ${res.fileName}`, 'success', 3500);
+      } else {
+        this._updateDownloadButtonsState(false, this.currentPreviewData.fileType);
+        this.showBanner('No se pudo guardar el archivo.', 'warning', 3500);
+      }
+    } catch (err) {
+      console.error('Error guardando comprobante:', err);
+      this._updateDownloadButtonsState(false, this.currentPreviewData.fileType);
+      this.showBanner('Error guardando comprobante: ' + (err.message || err), 'warning', 3500);
+    }
+  }
+
+  /**
+   * Actualiza el estado visual y textos de los botones de descarga del modal
+   */
+  _updateDownloadButtonsState(status, fileType = 'xml') {
+    const isPdf = fileType === 'pdf';
+    const typeLabel = isPdf ? 'PDF' : 'XML';
+
+    if (status === 'saved') {
+      if (this.btnInvoiceDownload) {
+        this.btnInvoiceDownload.classList.add('saved');
+        this.btnInvoiceDownload.disabled = false;
+      }
+      if (this.btnInvoiceDownloadLabel) {
+        this.btnInvoiceDownloadLabel.textContent = 'Guardado';
+      }
+      if (this.btnFooterInvoiceDownload) {
+        this.btnFooterInvoiceDownload.disabled = false;
+        this.btnFooterInvoiceDownload.classList.remove('btn-success');
+        this.btnFooterInvoiceDownload.classList.add('btn-secondary');
+      }
+      if (this.btnFooterInvoiceDownloadLabel) {
+        this.btnFooterInvoiceDownloadLabel.textContent = `Comprobante Guardado (${typeLabel})`;
+      }
+    } else if (status === 'loading') {
+      if (this.btnInvoiceDownload) this.btnInvoiceDownload.disabled = true;
+      if (this.btnInvoiceDownloadLabel) this.btnInvoiceDownloadLabel.textContent = 'Guardando...';
+      if (this.btnFooterInvoiceDownload) this.btnFooterInvoiceDownload.disabled = true;
+      if (this.btnFooterInvoiceDownloadLabel) this.btnFooterInvoiceDownloadLabel.textContent = 'Guardando...';
+    } else {
+      if (this.btnInvoiceDownload) {
+        this.btnInvoiceDownload.classList.remove('saved');
+        this.btnInvoiceDownload.disabled = false;
+      }
+      if (this.btnInvoiceDownloadLabel) {
+        this.btnInvoiceDownloadLabel.textContent = `Descargar ${typeLabel}`;
+      }
+      if (this.btnFooterInvoiceDownload) {
+        this.btnFooterInvoiceDownload.disabled = false;
+        this.btnFooterInvoiceDownload.classList.add('btn-success');
+        this.btnFooterInvoiceDownload.classList.remove('btn-secondary');
+      }
+      if (this.btnFooterInvoiceDownloadLabel) {
+        this.btnFooterInvoiceDownloadLabel.textContent = `Descargar Comprobante (${typeLabel})`;
+      }
+    }
   }
 
   closeInvoiceViewer() {

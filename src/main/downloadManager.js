@@ -24,6 +24,7 @@ class DownloadManager {
     this.activeClient = null;
     this.currentCategory = 'Ventas'; // 'Ventas' o 'Compras'
     this.expectedInfo = null;
+    this.isBulkMode = false; // Flag para descargas masivas automáticas vs manuales
     this.stats = {
       total: 0,
       completed: 0,
@@ -34,9 +35,41 @@ class DownloadManager {
     this.registeredSessions = new Set();
   }
 
+  _getDocumentsPath() {
+    try {
+      if (typeof app === 'object' && app && typeof app.getPath === 'function') {
+        return app.getPath('documents');
+      }
+    } catch (e) {}
+    return path.join(require('os').homedir(), 'Documents');
+  }
+
+  _getTempPath() {
+    try {
+      if (typeof app === 'object' && app && typeof app.getPath === 'function') {
+        return app.getPath('temp');
+      }
+    } catch (e) {}
+    return require('os').tmpdir();
+  }
+
+  _getUserDataPath() {
+    try {
+      if (typeof app === 'object' && app && typeof app.getPath === 'function') {
+        return app.getPath('userData');
+      }
+    } catch (e) {}
+    return require('os').tmpdir();
+  }
+
+  setBulkMode(isBulk) {
+    this.isBulkMode = Boolean(isBulk);
+    this._logDebug(`Modo de descarga masiva configurado en: ${this.isBulkMode}`);
+  }
+
   setTarget(client, customFolder = null, options = {}) {
     this.activeClient = client;
-    this.activeFolder = customFolder || (client ? client.defaultFolder : path.join(app.getPath('documents'), 'SRI_Clientes'));
+    this.activeFolder = customFolder || (client ? client.defaultFolder : path.join(this._getDocumentsPath(), 'SRI_Clientes'));
     this.currentCategory = options.category || this.currentCategory || 'Ventas';
     
     try {
@@ -56,7 +89,7 @@ class DownloadManager {
 
   _logDebug(msg) {
     try {
-      const debugFile = path.join(app.getPath('userData'), 'sri_debug.log');
+      const debugFile = path.join(this._getUserDataPath(), 'sri_debug.log');
       fs.appendFileSync(debugFile, `[${new Date().toISOString()}] [DownloadManager] ${msg}\n`);
     } catch (e) {}
   }
@@ -142,16 +175,89 @@ class DownloadManager {
       const ext = path.extname(originalName).toLowerCase();
       const mime = (item.getMimeType() || '').toLowerCase();
       
-      this._logDebug(`will-download recibido: originalName="${originalName}", ext="${ext}", mime="${mime}", currentCategory="${this.currentCategory}"`);
+      this._logDebug(`will-download recibido: originalName="${originalName}", ext="${ext}", mime="${mime}", isBulkMode=${this.isBulkMode}, expectedInfo=${Boolean(this.expectedInfo)}, currentCategory="${this.currentCategory}"`);
 
-      // SOLO DESCARGAR ARCHIVOS XML (validación por extensión, MIME o contexto de comprobante esperado)
+      const isPdf = ext === '.pdf' || mime.includes('pdf') || originalName.toLowerCase().includes('.pdf');
+      const isXml = ext === '.xml' || mime.includes('xml') || originalName.toLowerCase().includes('.xml');
+
+      // CASO 1: INTERCEPTACIÓN MANUAL PARA VISTA PREVIA (Clic en RIDE o XML dentro de la página del SRI)
+      if (!this.isBulkMode && !this.expectedInfo && (isPdf || isXml)) {
+        const tempDir = path.join(this._getTempPath(), 'tribu_previews');
+        try {
+          if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+          }
+        } catch (e) {
+          console.error('Error creando directorio temporal de previsualizaciones:', e);
+        }
+
+        const safeOriginalName = this._cleanFilename(originalName) || (isPdf ? 'comprobante.pdf' : 'comprobante.xml');
+        const tempFileName = `${Date.now()}_${safeOriginalName}`;
+        const tempFilePath = path.join(tempDir, tempFileName);
+
+        item.setSavePath(tempFilePath);
+        this._logDebug(`Interceptado comprobante para vista previa: tempFilePath="${tempFilePath}"`);
+
+        this._emitToRenderer('preview:loading', {
+          originalName: safeOriginalName,
+          fileType: isPdf ? 'pdf' : 'xml'
+        });
+
+        item.once('done', (doneEvent, state) => {
+          if (state === 'completed') {
+            this._logDebug(`Descarga temporal completada para vista previa: ${tempFilePath}`);
+
+            const claveMatch = safeOriginalName.match(/\b\d{49}\b/);
+            const claveAcceso = claveMatch ? claveMatch[0] : null;
+
+            let fechaEmision = null;
+            let year = null;
+            let month = null;
+            if (claveAcceso && claveAcceso.length >= 8) {
+              const d = claveAcceso.substring(0, 2);
+              const m = claveAcceso.substring(2, 4);
+              const y = claveAcceso.substring(4, 8);
+              fechaEmision = `${y}-${m}-${d}`;
+              year = y;
+              month = MONTH_NAMES[m] || `Mes_${m}`;
+            }
+
+            this._emitToRenderer('preview:show', {
+              fileType: isPdf ? 'pdf' : 'xml',
+              tempPath: tempFilePath,
+              fileName: safeOriginalName,
+              originalName: originalName,
+              claveAcceso: claveAcceso,
+              fechaEmision: fechaEmision,
+              year: year,
+              month: month,
+              category: this.currentCategory || 'Compras',
+              client: this.activeClient ? {
+                id: this.activeClient.id,
+                ruc: this.activeClient.ruc,
+                razonSocial: this.activeClient.razonSocial,
+                defaultFolder: this.activeClient.defaultFolder
+              } : null
+            });
+          } else {
+            this._logDebug(`Descarga temporal fallida para vista previa: state=${state}`);
+            this._emitToRenderer('preview:error', {
+              fileName: safeOriginalName,
+              state: state
+            });
+          }
+        });
+        return;
+      }
+
+      // CASO 2: DESCARGAS MASIVAS AUTOMÁTICAS (Solo XML)
       const isXmlExtension = ext === '.xml';
       const isXmlMime = mime.includes('xml') || mime.includes('octet-stream') || mime.includes('download') || mime.includes('plain');
       const isExpected = Boolean(this.expectedInfo);
       const isAcceptableXml = isXmlExtension || isXmlMime || isExpected || originalName.toLowerCase().includes('.xml');
 
       if (!isAcceptableXml) {
-        this._logDebug(`Descarga cancelada (no es XML aceptable): originalName="${originalName}", mime="${mime}"`);
+        this._logDebug(`Descarga cancelada (no es XML aceptable en modo masivo): originalName="${originalName}", mime="${mime}"`);
         item.cancel();
         return;
       }
@@ -218,7 +324,7 @@ class DownloadManager {
         month = MONTH_NAMES[monthPad] || `Mes_${monthPad}`;
       }
 
-      const baseDir = this.activeFolder || path.join(app.getPath('documents'), 'SRI_Clientes');
+      const baseDir = this.activeFolder || path.join(this._getDocumentsPath(), 'SRI_Clientes');
       let targetDir = baseDir;
 
       // Clasificar por categoría (Ventas / Compras)
@@ -283,6 +389,69 @@ class DownloadManager {
         this._notifyStats();
       });
     });
+  }
+
+  savePreviewFile({ tempPath, fileName, client, category, year, month, claveAcceso, customDestination = null }) {
+    if (!tempPath || !fs.existsSync(tempPath)) {
+      throw new Error('El archivo temporal de vista previa no existe o ha expirado.');
+    }
+
+    const activeClient = client || this.activeClient;
+    const baseFolder = (activeClient && activeClient.defaultFolder) || this.activeFolder || path.join(this._getDocumentsPath(), 'SRI_Clientes');
+    const cat = category || this.currentCategory || 'Compras';
+
+    let targetYear = year;
+    let targetMonth = month;
+    if (!targetYear || !targetMonth) {
+      if (claveAcceso && claveAcceso.length >= 8) {
+        const m = claveAcceso.substring(2, 4);
+        targetYear = claveAcceso.substring(4, 8);
+        targetMonth = MONTH_NAMES[m] || `Mes_${m}`;
+      } else {
+        const parsed = this._parseSriFilename(fileName || path.basename(tempPath));
+        if (parsed.valid) {
+          targetYear = parsed.year;
+          targetMonth = parsed.month;
+        } else {
+          const now = new Date();
+          targetYear = String(now.getFullYear());
+          const mPad = String(now.getMonth() + 1).padStart(2, '0');
+          targetMonth = MONTH_NAMES[mPad] || `Mes_${mPad}`;
+        }
+      }
+    }
+
+    const targetDir = customDestination || path.join(baseFolder, cat, targetYear, targetMonth);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    let destName = this._cleanFilename(fileName || path.basename(tempPath));
+    const ext = path.extname(tempPath).toLowerCase();
+    if (ext && !destName.toLowerCase().endsWith(ext)) {
+      destName += ext;
+    }
+
+    let destPath = path.join(targetDir, destName);
+    if (fs.existsSync(destPath)) {
+      const baseNoExt = path.basename(destName, ext);
+      let counter = 1;
+      while (fs.existsSync(path.join(targetDir, `${baseNoExt}_${counter}${ext}`))) {
+        counter++;
+      }
+      destName = `${baseNoExt}_${counter}${ext}`;
+      destPath = path.join(targetDir, destName);
+    }
+
+    fs.copyFileSync(tempPath, destPath);
+    this._logDebug(`Archivo de vista previa guardado en destino permanente: ${destPath}`);
+
+    return {
+      success: true,
+      savedPath: destPath,
+      fileName: destName,
+      folderPath: targetDir
+    };
   }
 
   _notifyStats() {

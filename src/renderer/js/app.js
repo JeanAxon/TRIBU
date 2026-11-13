@@ -187,6 +187,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // Interceptación de Vista Previa de Comprobantes SRI (RIDE / XML)
+  if (window.tribuApi && typeof window.tribuApi.onPreviewLoading === 'function') {
+    window.tribuApi.onPreviewLoading((data) => {
+      showBanner(`Obteniendo vista previa de ${data.originalName || 'comprobante'}...`, 'info', 2500);
+    });
+  }
+
+  if (window.tribuApi && typeof window.tribuApi.onPreviewShow === 'function') {
+    window.tribuApi.onPreviewShow(async (data) => {
+      if (atsModuleView && typeof atsModuleView.openInvoicePreview === 'function') {
+        await atsModuleView.openInvoicePreview(data);
+        showBanner('Vista previa lista', 'success', 1800);
+      }
+    });
+  }
+
+  if (window.tribuApi && typeof window.tribuApi.onPreviewError === 'function') {
+    window.tribuApi.onPreviewError((data) => {
+      showBanner(`Error descargando comprobante: ${data.state || 'Error de red'}`, 'warning', 3500);
+    });
+  }
+
   // Estado de la aplicación
   let state = {
     baseFolder: '',
@@ -1317,6 +1339,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     };
 
+    const injectRideInterceptor = async () => {
+      try {
+        if (window.tribuApi && typeof window.tribuApi.getSriRideInterceptorScript === 'function') {
+          const script = await window.tribuApi.getSriRideInterceptorScript();
+          await webview.executeJavaScript(script);
+        }
+      } catch (e) {}
+    };
+
     // Capturar en tiempo real cualquier clave ingresada o pegada en la pantalla del webview
     webview.addEventListener('console-message', async (e) => {
       if (e.message && e.message.startsWith('__TRIBU_KEY__:')) {
@@ -1325,11 +1356,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           capturedPasswordPending = pass;
         }
       }
+      if (e.message && e.message.startsWith('__TRIBU_RIDE_INTERCEPT__:')) {
+        showBanner('Generando vista previa del comprobante SRI...', 'info', 3000);
+      }
     });
 
     webview.addEventListener('dom-ready', async () => {
       await handlePageLoadOrNavigate();
       await updateDownloadButtonVisibility();
+      await injectRideInterceptor();
     });
 
     webview.addEventListener('did-navigate', async () => {
@@ -1341,19 +1376,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       } catch (e) {}
       await handlePageLoadOrNavigate();
       await updateSriActionButtonsVisibility();
+      await injectRideInterceptor();
     });
 
     webview.addEventListener('did-navigate-in-page', async () => {
       await updateSriActionButtonsVisibility();
+      await injectRideInterceptor();
     });
 
     webview.addEventListener('did-frame-finish-load', async () => {
       await updateSriActionButtonsVisibility();
+      await injectRideInterceptor();
     });
 
     webview.addEventListener('did-finish-load', async () => {
       await handlePageLoadOrNavigate();
       await updateSriActionButtonsVisibility();
+      await injectRideInterceptor();
     });
 
     // Iniciar monitor de verificación de página para el webview recién montado
@@ -1756,6 +1795,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     state.isBulkDownloading = true;
     state.cancelBulkDownload = false;
+    if (window.tribuApi && typeof window.tribuApi.setBulkDownloadMode === 'function') {
+      await window.tribuApi.setBulkDownloadMode(true);
+    }
 
     if (state.activeClient) {
       await window.tribuApi.configureDownloadTarget({
@@ -1931,6 +1973,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       dismissProgressDrawer(1000);
     } finally {
       state.isBulkDownloading = false;
+      if (window.tribuApi && typeof window.tribuApi.setBulkDownloadMode === 'function') {
+        await window.tribuApi.setBulkDownloadMode(false);
+      }
     }
   }
 
@@ -1939,6 +1984,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     state.isBulkDownloading = true;
     state.cancelBulkDownload = false;
+    if (window.tribuApi && typeof window.tribuApi.setBulkDownloadMode === 'function') {
+      await window.tribuApi.setBulkDownloadMode(true);
+    }
 
     if (state.activeClient) {
       await window.tribuApi.configureDownloadTarget({
@@ -2123,6 +2171,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       dismissProgressDrawer(1000);
     } finally {
       state.isBulkDownloading = false;
+      if (window.tribuApi && typeof window.tribuApi.setBulkDownloadMode === 'function') {
+        await window.tribuApi.setBulkDownloadMode(false);
+      }
     }
   }
 
