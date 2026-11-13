@@ -347,8 +347,9 @@
           </div>
 
           <div class="ats-actions-group">
+            <button id="btnValidateAtsPeriod" class="btn btn-secondary" title="Verificar que los comprobantes cumplan con todas las reglas técnicas del SRI">Validar Período</button>
             <button id="btnExportCsv" class="btn btn-secondary">Exportar a Excel (CSV)</button>
-            <button id="btnGenerateAtsXml" class="btn btn-success font-bold">Generar Anexo ATS (XML)</button>
+            <button id="btnGenerateAtsXml" class="btn btn-success font-bold" title="Generar archivo XML y paquete ZIP oficial para el SRI">Generar ATS (ZIP)</button>
           </div>
         </div>
 
@@ -944,19 +945,23 @@
       </div>
       <div class="modal-body">
         <div class="ats-success-badge-box">
-          <div style="color: var(--btn-success); font-weight: 700; font-size: 14px; margin-bottom: 4px;">Archivo ATS XML listo para el SRI</div>
-          <div style="font-size: 12px; color: var(--text-secondary);">El archivo cumple con la estructura XML del SRI Ecuador para declaraciones mensuales.</div>
+          <div style="color: var(--btn-success); font-weight: 700; font-size: 14px; margin-bottom: 4px;">Paquete Oficial ATS (ZIP) generado para el SRI</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">Empaquetado conforme a la Ficha Técnica Oficial del SRI y listo para ser cargado en el portal RIG.</div>
         </div>
 
         <div style="font-size: 13px; line-height: 1.6; color: var(--text-main);">
-          <p><strong>Archivo:</strong> <span id="atsGeneratedFileName" style="color: var(--btn-primary); font-weight: 700;"></span></p>
-          <p><strong>Comprobantes incluidos:</strong> <span id="atsGeneratedCount" style="color: var(--text-main); font-weight: 700;"></span></p>
-          <p><strong>Ubicación:</strong></p>
+          <p><strong>Paquete ZIP (SRI):</strong> <span id="atsGeneratedZipName" style="color: var(--btn-primary); font-weight: 700;"></span> <span id="atsGeneratedZipSize" style="color: var(--text-secondary); font-size: 12px;"></span></p>
+          <p><strong>Archivo XML:</strong> <span id="atsGeneratedFileName" style="color: var(--text-main); font-weight: 600;"></span></p>
+          <p><strong>Comprobantes consolidados:</strong> <span id="atsGeneratedCount" style="color: var(--text-main); font-weight: 700;"></span></p>
+          <div id="atsValidationSummary" style="margin-top: 8px; font-size: 12px;"></div>
+          <p style="margin-top: 8px;"><strong>Ubicación de archivos:</strong></p>
           <div id="atsGeneratedFilePath" class="code-path-box"></div>
         </div>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer" style="flex-wrap: wrap; gap: 8px;">
         <button id="btnOpenAtsFolder" class="btn btn-secondary">Abrir Carpeta</button>
+        <button id="btnCheckTalonResumen" class="btn btn-secondary" title="Consultar talón resumen en portal SRI">Talón Resumen</button>
+        <button id="btnCheckErroresSri" class="btn btn-secondary" title="Consultar archivo de errores en portal SRI">Errores SRI</button>
         <button id="btnUploadAtsToSri" class="btn btn-primary" title="Abrir recepción de Anexos en el portal del SRI">Cargar ATS en SRI</button>
         <button id="btnAcceptAtsModal" class="btn btn-secondary">Aceptar</button>
       </div>

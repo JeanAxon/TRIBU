@@ -2371,12 +2371,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         compras: 'Comprobantes Recibidos (Compras)',
         ventas: 'Comprobantes Emitidos (Ventas)',
         ats: 'Recepción de Anexos (ATS)',
+        ats_carga: 'Carga de Archivo XML (ATS)',
+        ats_talon: 'Consulta de Talón Resumen (ATS)',
+        ats_errores: 'Consulta de Archivo de Errores (ATS)',
+        ats_recuperar: 'Recuperar Archivo Cargado (ATS)',
         declaracion: 'Formulario de Declaracion IVA'
       };
 
       let key = 'compras';
       const targetStr = String(target || '').toLowerCase();
-      if (targetStr.includes('venta') || targetStr.includes('emitid') || targetStr.includes('redireccion=60')) {
+      if (targetStr.includes('talon')) {
+        key = 'ats_talon';
+      } else if (targetStr.includes('error')) {
+        key = 'ats_errores';
+      } else if (targetStr.includes('recuperar')) {
+        key = 'ats_recuperar';
+      } else if (targetStr.includes('carga') && targetStr.includes('ats')) {
+        key = 'ats_carga';
+      } else if (targetStr.includes('venta') || targetStr.includes('emitid') || targetStr.includes('redireccion=60')) {
         key = 'ventas';
       } else if (targetStr.includes('ats') || targetStr.includes('anexo') || targetStr.includes('redireccion=187')) {
         key = 'ats';

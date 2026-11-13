@@ -1756,6 +1756,30 @@ function getNavigateToSriSectionScript(target = 'compras') {
         selector: 'a[href*="redireccion=187"], a[href*="EnvioConsulta"]',
         headerText: 'ANEXOS'
       },
+      ats_carga: {
+        url: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=187&idGrupo=182',
+        selector: 'a[href*="redireccion=187"], a[href*="EnvioConsulta"]',
+        headerText: 'ANEXOS',
+        atsAccordionText: 'Carga de archivo xml'
+      },
+      ats_talon: {
+        url: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=187&idGrupo=182',
+        selector: 'a[href*="redireccion=187"], a[href*="EnvioConsulta"]',
+        headerText: 'ANEXOS',
+        atsAccordionText: 'Consulta de talón resumen'
+      },
+      ats_errores: {
+        url: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=187&idGrupo=182',
+        selector: 'a[href*="redireccion=187"], a[href*="EnvioConsulta"]',
+        headerText: 'ANEXOS',
+        atsAccordionText: 'Consulta de archivo de errores'
+      },
+      ats_recuperar: {
+        url: 'https://srienlinea.sri.gob.ec/tuportal-internet/accederAplicacion.jspa?redireccion=187&idGrupo=182',
+        selector: 'a[href*="redireccion=187"], a[href*="EnvioConsulta"]',
+        headerText: 'ANEXOS',
+        atsAccordionText: 'Recuperar archivo cargado'
+      },
       declaracion: {
         url: 'https://srienlinea.sri.gob.ec/sri-declaraciones-web-internet/pages/recepcion/recibirDeclaracion.jsf?identificadorGrupoObligacion=IVA',
         selector: 'a[href*="recibirDeclaracion.jsf"], a[href*="declaracion"]',
@@ -1766,7 +1790,20 @@ function getNavigateToSriSectionScript(target = 'compras') {
     const cfg = targets[section] || targets.compras;
 
     try {
-      // 1. Si ya estamos en menu.jsf y el objetivo es ventas, ingresar a comprobantes emitidos
+      // 1. Si ya estamos en el portal de ATS (RIG) y se solicitó una sección específica
+      if (window.location.href.includes('/rig/pages/menuInicial.xhtml')) {
+        const atsTabTitle = cfg.atsAccordionText || (section === 'ats' ? 'Carga de archivo xml' : null);
+        if (atsTabTitle) {
+          const headers = Array.from(document.querySelectorAll('.ui-accordion-header, h3, a'));
+          const targetTab = headers.find(h => (h.innerText || '').toLowerCase().includes(atsTabTitle.toLowerCase()));
+          if (targetTab) {
+            targetTab.click();
+            return { success: true, method: 'ats_accordion_click', section, tab: atsTabTitle };
+          }
+        }
+      }
+
+      // 2. Si ya estamos en menu.jsf y el objetivo es ventas, ingresar a comprobantes emitidos
       if (section === 'ventas' && window.location.href.includes('menu.jsf')) {
         const emitLink = Array.from(document.querySelectorAll('a')).find(a => {
           const t = (a.innerText || '').toLowerCase();

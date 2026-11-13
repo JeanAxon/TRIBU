@@ -116,6 +116,10 @@ const atsResult = generateAtsXml({
 
 assert(atsResult.success === true, 'Generación de ATS debe ser exitosa');
 assert(fs.existsSync(atsResult.filePath), 'El archivo ATS XML debe existir en disco');
+assert(fs.existsSync(atsResult.zipFilePath), 'El paquete oficial ATS ZIP debe existir en disco');
+assert.strictEqual(atsResult.zipFileName, 'AT092025.zip', 'El nombre del ZIP debe cumplir la norma SRI ATmmaaaa.zip');
+assert(atsResult.zipSizeBytes > 0 && atsResult.withinSizeLimit, 'El tamaño del ZIP debe ser menor a 8 MB');
+assert(atsResult.validation && atsResult.validation.isValid, 'La validación previa debe ser exitosa');
 
 const atsXmlContent = fs.readFileSync(atsResult.filePath, 'utf8');
 assert(atsXmlContent.includes('<NumeroRuc>1790012345001</NumeroRuc>'), 'Debe contener RUC informante');
@@ -125,7 +129,28 @@ assert(atsXmlContent.includes('<detalleCompras>'), 'Debe contener detalleCompras
 assert(atsXmlContent.includes('<idProv>1191759822001</idProv>'), 'Debe contener idProv');
 assert(atsXmlContent.includes('<baseImpGrav>100.00</baseImpGrav>'), 'Debe contener baseImpGrav formateada a 2 decimales');
 assert(atsXmlContent.includes('<montoIva>15.00</montoIva>'), 'Debe contener montoIva formateada a 2 decimales');
-console.log('[OK] generateAtsXml: Archivo ATS XML oficial generado y validado contra esquema SRI');
+console.log('[OK] generateAtsXml: Archivo ATS XML y paquete ZIP oficial generados y validados contra esquema SRI');
+
+// 4.1 Probar validación normativa específica
+const valOk = atsModule.validateAtsData({
+  client: { ruc: '1790012345001' },
+  year: '2025',
+  month: '09',
+  compras: loaded.items,
+  ventas: []
+});
+assert.strictEqual(valOk.isValid, true, 'Validación con datos correctos');
+
+const valInvalida = atsModule.validateAtsData({
+  client: { ruc: '123' },
+  year: '1999',
+  month: '15',
+  compras: [],
+  ventas: []
+});
+assert.strictEqual(valInvalida.isValid, false, 'Validación debe fallar con RUC corto y mes 15');
+assert(valInvalida.errors.length >= 2, 'Debe reportar múltiples errores de esquema');
+console.log('[OK] validateAtsData: Reglas técnicas de RUC, período y límites verificadas');
 
 // 5. Probar exportToCsv
 const csvResult = exportToCsv({
@@ -157,6 +182,7 @@ const mockIpc = {
 };
 atsModule.registerIpc(mockIpc);
 assert(mockIpcChannels.includes('ats:load-period-xmls'), 'Canal ats:load-period-xmls registrado');
+assert(mockIpcChannels.includes('ats:validate-period'), 'Canal ats:validate-period registrado');
 assert(mockIpcChannels.includes('ats:generate-xml'), 'Canal ats:generate-xml registrado');
 assert(mockIpcChannels.includes('ats:export-csv'), 'Canal ats:export-csv registrado');
 console.log('[OK] registerIpc: Manejadores IPC del módulo ATS registrados limpiamente');

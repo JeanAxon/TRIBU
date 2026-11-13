@@ -52,6 +52,7 @@ contextBridge.exposeInMainWorld('tribuApi', {
   loadPeriodXmls: (params) => ipcRenderer.invoke('ats:load-period-xmls', params),
   parseSingleXml: (filePath) => ipcRenderer.invoke('ats:parse-single-xml', filePath),
   generateAtsXml: (params) => ipcRenderer.invoke('ats:generate-xml', params),
+  validateAtsPeriod: (params) => ipcRenderer.invoke('ats:validate-period', params),
   exportToCsv: (params) => ipcRenderer.invoke('ats:export-csv', params),
   getAtsConstants: () => ipcRenderer.invoke('ats:get-constants'),
 

@@ -5,20 +5,22 @@
  * Este módulo encapsula:
  * - Lectura y parseo de comprobantes electrónicos XML
  * - Descubrimiento automático de carpetas y periodos
- * - Generación del XML oficial de ATS conforme al estándar del SRI
+ * - Generación del XML y ZIP oficial de ATS conforme al estándar del SRI (RIG)
+ * - Validación normativa y algorítmica previa a la carga
  * - Exportación de resúmenes y reportes a CSV/Excel
  * - Registro de canales de comunicación IPC con el proceso principal
  */
 
 const xmlParser = require('./xmlParser');
 const atsGenerator = require('./atsGenerator');
+const atsValidator = require('./atsValidator');
 const csvExporter = require('./csvExporter');
 const constants = require('./constants');
 
 class AtsModule {
   constructor() {
     this.name = 'ats-module';
-    this.version = '1.0.0';
+    this.version = '1.1.0';
   }
 
   /**
@@ -46,17 +48,22 @@ class AtsModule {
       return xmlParser.parseXmlFile(filePath);
     });
 
-    // 2. Generación del XML del ATS oficial
+    // 2. Validación normativa del período
+    ipcMain.handle('ats:validate-period', async (event, { client, year, month, compras, ventas }) => {
+      return atsValidator.validateAtsData({ client, year, month, compras, ventas });
+    });
+
+    // 3. Generación del XML y ZIP del ATS oficial
     ipcMain.handle('ats:generate-xml', async (event, { client, year, month, compras, ventas }) => {
       return atsGenerator.generateAtsXml({ client, year, month, compras, ventas });
     });
 
-    // 3. Exportación de comprobantes a CSV para Excel
+    // 4. Exportación de comprobantes a CSV para Excel
     ipcMain.handle('ats:export-csv', async (event, { client, category, year, month, items }) => {
       return csvExporter.exportToCsv({ client, category, year, month, items });
     });
 
-    // 4. Catálogos oficiales (para inicialización o consultas del frontend)
+    // 5. Catálogos oficiales (para inicialización o consultas del frontend)
     ipcMain.handle('ats:get-constants', async () => {
       return constants;
     });
@@ -82,6 +89,10 @@ class AtsModule {
 
   getAvailablePeriods(clientFolder) {
     return xmlParser.getAvailablePeriods(clientFolder);
+  }
+
+  validateAtsData(params) {
+    return atsValidator.validateAtsData(params);
   }
 
   generateAtsXml(params) {

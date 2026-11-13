@@ -58,13 +58,19 @@ class AtsModuleView {
 
     // Modal de ATS Generado
     this.atsSuccessModal = document.getElementById('atsSuccessModal');
+    this.atsGeneratedZipName = document.getElementById('atsGeneratedZipName');
+    this.atsGeneratedZipSize = document.getElementById('atsGeneratedZipSize');
     this.atsGeneratedFileName = document.getElementById('atsGeneratedFileName');
     this.atsGeneratedCount = document.getElementById('atsGeneratedCount');
     this.atsGeneratedFilePath = document.getElementById('atsGeneratedFilePath');
+    this.atsValidationSummary = document.getElementById('atsValidationSummary');
     this.btnOpenAtsFolder = document.getElementById('btnOpenAtsFolder');
     this.btnUploadAtsToSri = document.getElementById('btnUploadAtsToSri');
+    this.btnCheckTalonResumen = document.getElementById('btnCheckTalonResumen');
+    this.btnCheckErroresSri = document.getElementById('btnCheckErroresSri');
     this.btnAcceptAtsModal = document.getElementById('btnAcceptAtsModal');
     this.btnCloseAtsModal = document.getElementById('btnCloseAtsModal');
+    this.btnValidateAtsPeriod = document.getElementById('btnValidateAtsPeriod');
 
     // Modal Flotante de Factura Electrónica (RIDE)
     this.invoiceViewerModal = document.getElementById('invoiceViewerModal');
@@ -101,6 +107,10 @@ class AtsModuleView {
       this.btnGenerateAtsXml.addEventListener('click', () => this.generateAts());
     }
 
+    if (this.btnValidateAtsPeriod) {
+      this.btnValidateAtsPeriod.addEventListener('click', () => this.validateCurrentPeriod());
+    }
+
     if (this.btnExportCsv) {
       this.btnExportCsv.addEventListener('click', () => this.exportCsv());
     }
@@ -117,7 +127,25 @@ class AtsModuleView {
       this.btnUploadAtsToSri.addEventListener('click', () => {
         this.atsSuccessModal.classList.remove('active');
         if (window.tribuNavDelegate && typeof window.tribuNavDelegate.goToSriUrl === 'function') {
-          window.tribuNavDelegate.goToSriUrl('ats');
+          window.tribuNavDelegate.goToSriUrl('ats_carga');
+        }
+      });
+    }
+
+    if (this.btnCheckTalonResumen) {
+      this.btnCheckTalonResumen.addEventListener('click', () => {
+        this.atsSuccessModal.classList.remove('active');
+        if (window.tribuNavDelegate && typeof window.tribuNavDelegate.goToSriUrl === 'function') {
+          window.tribuNavDelegate.goToSriUrl('ats_talon');
+        }
+      });
+    }
+
+    if (this.btnCheckErroresSri) {
+      this.btnCheckErroresSri.addEventListener('click', () => {
+        this.atsSuccessModal.classList.remove('active');
+        if (window.tribuNavDelegate && typeof window.tribuNavDelegate.goToSriUrl === 'function') {
+          window.tribuNavDelegate.goToSriUrl('ats_errores');
         }
       });
     }
@@ -431,7 +459,7 @@ class AtsModuleView {
   }
 
   /**
-   * Genera el archivo oficial del ATS XML
+   * Genera el archivo oficial del ATS XML y paquete ZIP oficial SRI
    */
   async generateAts() {
     const client = this.getActiveClient();
@@ -443,11 +471,57 @@ class AtsModuleView {
     }
 
     try {
-      this.showBanner('Generando Anexo Transaccional Simplificado (ATS)...', 'info');
+      this.showBanner('Consolidando Compras y Ventas del período...', 'info');
 
       const isCompras = this.state.category === 'Compras';
-      const comprasPayload = isCompras ? this.state.items : [];
-      const ventasPayload = !isCompras ? this.state.items : [];
+      let comprasPayload = isCompras ? this.state.items : [];
+      let ventasPayload = !isCompras ? this.state.items : [];
+
+      // Cargar la contraparte automáticamente para asegurar la consolidación completa del ATS
+      if (isCompras && (!ventasPayload || ventasPayload.length === 0)) {
+        try {
+          const vRes = await this.api.loadPeriodXmls({
+            clientFolder: client.defaultFolder,
+            category: 'Ventas',
+            year: this.state.year,
+            month: this.state.month
+          });
+          ventasPayload = (vRes && vRes.items) || [];
+        } catch (e) {
+          console.warn('No se encontraron ventas para consolidar en este período:', e);
+        }
+      } else if (!isCompras && (!comprasPayload || comprasPayload.length === 0)) {
+        try {
+          const cRes = await this.api.loadPeriodXmls({
+            clientFolder: client.defaultFolder,
+            category: 'Compras',
+            year: this.state.year,
+            month: this.state.month
+          });
+          comprasPayload = (cRes && cRes.items) || [];
+        } catch (e) {
+          console.warn('No se encontraron compras para consolidar en este período:', e);
+        }
+      }
+
+      // Validar datos normativos
+      if (this.api && typeof this.api.validateAtsPeriod === 'function') {
+        const valRes = await this.api.validateAtsPeriod({
+          client,
+          year: this.state.year,
+          month: this.state.month,
+          compras: comprasPayload,
+          ventas: ventasPayload
+        });
+
+        if (valRes && !valRes.isValid && valRes.errors.length > 0) {
+          const errList = valRes.errors.join('\n- ');
+          const proceed = confirm(`Se detectaron inconsistencias técnicas para el SRI:\n\n- ${errList}\n\n¿Deseas generar el anexo de todas formas?`);
+          if (!proceed) return;
+        }
+      }
+
+      this.showBanner('Generando paquete ATS oficial (XML y ZIP)...', 'info');
 
       const result = await this.api.generateAtsXml({
         client,
@@ -459,17 +533,119 @@ class AtsModuleView {
 
       if (result.success) {
         this.state.lastGeneratedFolder = result.folderPath;
-        this.atsGeneratedFileName.textContent = result.fileName;
-        this.atsGeneratedCount.textContent = `${result.totalCompras} comprobantes de compras, ${result.totalVentas} comprobantes de ventas`;
-        this.atsGeneratedFilePath.textContent = result.filePath;
+        if (this.atsGeneratedZipName) {
+          this.atsGeneratedZipName.textContent = result.zipFileName || `AT${this.state.month}${this.state.year}.zip`;
+        }
+        if (this.atsGeneratedZipSize) {
+          const sizeKb = ((result.zipSizeBytes || 0) / 1024).toFixed(1);
+          this.atsGeneratedZipSize.textContent = `(${sizeKb} KB - Límite SRI: 8 MB)`;
+        }
+        if (this.atsGeneratedFileName) {
+          this.atsGeneratedFileName.textContent = result.xmlFileName || result.fileName;
+        }
+        if (this.atsGeneratedCount) {
+          this.atsGeneratedCount.textContent = `${result.totalCompras} compras, ${result.totalVentas} ventas (Total Ventas: $${(result.totalMontoVentas || 0).toFixed(2)})`;
+        }
+        if (this.atsGeneratedFilePath) {
+          this.atsGeneratedFilePath.textContent = result.zipFilePath || result.filePath;
+        }
+
+        if (this.atsValidationSummary) {
+          const val = result.validation;
+          if (val && val.warnings && val.warnings.length > 0) {
+            this.atsValidationSummary.innerHTML = `
+              <div style="background: #fffbeb; border: 1px solid #fef3c7; color: #92400e; padding: 6px 10px; border-radius: 4px;">
+                <strong>Avisos normativos:</strong>
+                <ul style="margin: 4px 0 0 16px; padding: 0;">
+                  ${val.warnings.map(w => `<li>${this._escapeHtml(w)}</li>`).join('')}
+                </ul>
+              </div>
+            `;
+          } else {
+            this.atsValidationSummary.innerHTML = `
+              <div style="color: #047857; font-weight: 600;">
+                Validación técnica SRI: Conforme a la Ficha Técnica oficial.
+              </div>
+            `;
+          }
+        }
 
         this.atsSuccessModal.classList.add('active');
-        this.showBanner(`Anexo ATS generado exitosamente: ${result.fileName}`, 'success', 5000);
+        this.showBanner(`Paquete ATS generado exitosamente: ${result.zipFileName || result.fileName}`, 'success', 5000);
       } else {
         alert('Error generando el anexo ATS: ' + result.error);
       }
     } catch (e) {
       alert('Error en la generación de ATS: ' + e.message);
+    }
+  }
+
+  /**
+   * Valida el período actual contra reglas técnicas del SRI y muestra el reporte
+   */
+  async validateCurrentPeriod() {
+    const client = this.getActiveClient();
+    if (!client) return;
+
+    if (!this.state.items || this.state.items.length === 0) {
+      alert('Carga primero los comprobantes del período para poder validar.');
+      return;
+    }
+
+    try {
+      this.showBanner('Validando período contra reglas técnicas del SRI...', 'info');
+
+      const isCompras = this.state.category === 'Compras';
+      let comprasPayload = isCompras ? this.state.items : [];
+      let ventasPayload = !isCompras ? this.state.items : [];
+
+      if (isCompras) {
+        try {
+          const vRes = await this.api.loadPeriodXmls({
+            clientFolder: client.defaultFolder,
+            category: 'Ventas',
+            year: this.state.year,
+            month: this.state.month
+          });
+          ventasPayload = (vRes && vRes.items) || [];
+        } catch (e) {}
+      } else {
+        try {
+          const cRes = await this.api.loadPeriodXmls({
+            clientFolder: client.defaultFolder,
+            category: 'Compras',
+            year: this.state.year,
+            month: this.state.month
+          });
+          comprasPayload = (cRes && cRes.items) || [];
+        } catch (e) {}
+      }
+
+      if (this.api && typeof this.api.validateAtsPeriod === 'function') {
+        const val = await this.api.validateAtsPeriod({
+          client,
+          year: this.state.year,
+          month: this.state.month,
+          compras: comprasPayload,
+          ventas: ventasPayload
+        });
+
+        if (val.isValid && val.warnings.length === 0) {
+          alert(`Período ${this.state.month} ${this.state.year} VALIDADO CON ÉXITO.\n\n- Compras: ${val.summary.totalCompras} ($${val.summary.montoTotalCompras.toFixed(2)})\n- Ventas: ${val.summary.totalVentas} ($${val.summary.montoTotalVentas.toFixed(2)})\n- Cumple al 100% con la Ficha Técnica del SRI.`);
+        } else {
+          let msg = `Reporte de Validación ATS (${this.state.month} ${this.state.year}):\n\n`;
+          if (val.errors.length > 0) {
+            msg += `ERRORES (${val.errors.length}):\n- ` + val.errors.join('\n- ') + '\n\n';
+          }
+          if (val.warnings.length > 0) {
+            msg += `OBSERVACIONES (${val.warnings.length}):\n- ` + val.warnings.join('\n- ') + '\n\n';
+          }
+          msg += `Resumen:\n- Compras: ${val.summary.totalCompras} ($${val.summary.montoTotalCompras.toFixed(2)})\n- Ventas: ${val.summary.totalVentas} ($${val.summary.montoTotalVentas.toFixed(2)})`;
+          alert(msg);
+        }
+      }
+    } catch (e) {
+      alert('Error durante la validación: ' + e.message);
     }
   }
 
