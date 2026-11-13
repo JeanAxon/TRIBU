@@ -1,6 +1,6 @@
 {
   "name": "tribu-sri",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Mini-navegador y gestor de clientes para automatización del SRI Ecuador",
   "main": "src/main/main.js",
   "scripts": {
