@@ -1605,6 +1605,8 @@ body {
   gap: 10px;
   flex-shrink: 0;
   min-height: 50px;
+  position: relative;
+  z-index: 50;
 }
 
 .ats-toolbar-left {
@@ -1816,6 +1818,138 @@ body {
   white-space: nowrap;
 }
 
+/* Botón icon-only (p. ej. Recargar Comprobantes) */
+.ats-btn-icon-only {
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: var(--radius-md) !important;
+  color: var(--muted-foreground) !important;
+}
+
+.ats-btn-icon-only:hover {
+  color: var(--foreground) !important;
+  background-color: var(--muted-hover) !important;
+  border-color: var(--input) !important;
+}
+
+.ats-btn-icon-only svg {
+  transition: transform 0.25s ease;
+}
+
+.ats-btn-icon-only:hover svg {
+  transform: rotate(45deg);
+}
+
+.ats-btn-icon-only:active svg {
+  transform: rotate(180deg);
+}
+
+/* Menú Desplegable 'Herramientas' de la Barra ATS */
+.ats-dropdown {
+  position: relative;
+  display: inline-flex;
+}
+
+.ats-dropdown-trigger {
+  gap: 6px !important;
+}
+
+.ats-dropdown-caret {
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--muted-foreground);
+}
+
+.ats-dropdown.open .ats-dropdown-caret {
+  transform: rotate(180deg);
+  color: var(--primary);
+}
+
+.ats-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 245px;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
+  padding: 6px;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 1000;
+}
+
+.ats-dropdown.open .ats-dropdown-menu {
+  display: flex !important;
+}
+
+.ats-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+  user-select: none;
+}
+
+.ats-dropdown-item:hover {
+  background-color: var(--secondary);
+  border-color: var(--border);
+}
+
+.ats-dropdown-item svg {
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+  transition: color 0.12s ease;
+}
+
+.ats-dropdown-item:hover svg {
+  color: var(--primary);
+}
+
+.ats-dropdown-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ats-dropdown-item-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground);
+  line-height: 1.2;
+}
+
+.ats-dropdown-item-desc {
+  font-size: 10.5px;
+  color: var(--muted-foreground);
+  line-height: 1.2;
+}
+
+.ats-dropdown-divider {
+  height: 1px;
+  background-color: var(--border);
+  margin: 4px 6px;
+}
+
+body.theme-dark .ats-dropdown-menu {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
 .ats-toolbar-divider {
   width: 1px;
   height: 20px;
@@ -1847,7 +1981,7 @@ body {
   color: var(--primary);
 }
 
-@media (max-width: 1320px) {
+@media (max-width: 1020px) {
   .ats-toolbar {
     flex-wrap: wrap;
     gap: 8px;
@@ -1859,7 +1993,7 @@ body {
   }
   .ats-toolbar-right {
     width: 100%;
-    justify-content: space-between;
+    justify-content: flex-end;
   }
   .ats-toolbar-divider {
     display: none;

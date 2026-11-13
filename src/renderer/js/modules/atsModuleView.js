@@ -40,6 +40,8 @@ class AtsModuleView {
     this.btnOpenCurrentPeriodFolder = document.getElementById('btnOpenCurrentPeriodFolder');
     this.btnExportCsv = document.getElementById('btnExportCsv');
     this.btnGenerateAtsXml = document.getElementById('btnGenerateAtsXml');
+    this.atsMoreActionsDropdown = document.getElementById('atsMoreActionsDropdown');
+    this.btnAtsMoreActions = document.getElementById('btnAtsMoreActions');
 
     // KPIs
     this.kpiCount = document.getElementById('kpiCount');
@@ -194,6 +196,36 @@ class AtsModuleView {
 
     if (this.btnExportCsv) {
       this.btnExportCsv.addEventListener('click', () => this.exportCsv());
+    }
+
+    // Control del Menú Desplegable 'Herramientas' (Progressive Disclosure)
+    if (this.btnAtsMoreActions && this.atsMoreActionsDropdown) {
+      this.btnAtsMoreActions.addEventListener('click', (e) => {
+        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        const isOpen = this.atsMoreActionsDropdown.classList.toggle('open');
+        this.btnAtsMoreActions.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+
+      if (typeof this.atsMoreActionsDropdown.querySelectorAll === 'function') {
+        const menuItems = this.atsMoreActionsDropdown.querySelectorAll('.ats-dropdown-item');
+        menuItems.forEach(item => {
+          item.addEventListener('click', () => {
+            this.atsMoreActionsDropdown.classList.remove('open');
+            this.btnAtsMoreActions.setAttribute('aria-expanded', 'false');
+          });
+        });
+      }
+
+      if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+        document.addEventListener('click', (e) => {
+          if (this.atsMoreActionsDropdown && e && e.target && typeof this.atsMoreActionsDropdown.contains === 'function') {
+            if (!this.atsMoreActionsDropdown.contains(e.target)) {
+              this.atsMoreActionsDropdown.classList.remove('open');
+              this.btnAtsMoreActions.setAttribute('aria-expanded', 'false');
+            }
+          }
+        });
+      }
     }
 
     if (this.btnOpenAtsFolder) {
@@ -2136,9 +2168,10 @@ class AtsModuleView {
   }
 }
 
-// Exportar para su uso en la aplicación
+// Exportar para su uso en la aplicación y pruebas
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = AtsModuleView;
-} else {
+}
+if (typeof window !== 'undefined') {
   window.AtsModuleView = AtsModuleView;
 }
