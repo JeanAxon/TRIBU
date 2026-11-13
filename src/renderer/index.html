@@ -337,64 +337,159 @@
     <section id="viewAts" class="view">
       <div class="ats-view-container" id="clientAtsContainer">
         
-        <!-- Barra de Filtros y Acciones ATS -->
+        <!-- Barra de Filtros y Acciones ATS (Diseño Moderno y Ergonómico) -->
         <div class="ats-toolbar">
           <div class="ats-filters-group">
-            <div class="ats-filter-item">
-              <label for="atsFilterCategory">Tipo:</label>
-              <select id="atsFilterCategory" class="ats-select">
-                <option value="Compras" selected>Compras (Recibidos)</option>
-                <option value="Ventas">Ventas (Emitidos)</option>
-              </select>
+            <!-- Selector Segmentado de Categoría (Compras / Ventas) -->
+            <div class="ats-segmented-control" id="atsSegmentedCategory" role="tablist" aria-label="Tipo de comprobantes">
+              <button type="button" class="ats-segment-btn active" data-category="Compras" role="tab" aria-selected="true" title="Comprobantes recibidos (Compras)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                  <rect x="1" y="3" width="22" height="5"></rect>
+                  <line x1="10" y1="12" x2="14" y2="12"></line>
+                </svg>
+                <span>Compras (Recibidos)</span>
+              </button>
+              <button type="button" class="ats-segment-btn" data-category="Ventas" role="tab" aria-selected="false" title="Comprobantes emitidos (Ventas)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                <span>Ventas (Emitidos)</span>
+              </button>
+            </div>
+            <select id="atsFilterCategory" class="ats-select" style="display: none;" aria-hidden="true">
+              <option value="Compras" selected>Compras (Recibidos)</option>
+              <option value="Ventas">Ventas (Emitidos)</option>
+            </select>
+
+            <!-- Selector Unificado de Período (Año y Mes) -->
+            <div class="ats-period-picker-card">
+              <div class="ats-period-icon" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+              </div>
+              <div class="ats-select-wrapper">
+                <label for="atsFilterYear" class="sr-only">Año</label>
+                <select id="atsFilterYear" class="ats-select ats-select-period" title="Año fiscal"></select>
+              </div>
+              <span class="ats-period-separator">/</span>
+              <div class="ats-select-wrapper">
+                <label for="atsFilterMonth" class="sr-only">Mes</label>
+                <select id="atsFilterMonth" class="ats-select ats-select-period ats-select-month" title="Mes del período"></select>
+              </div>
             </div>
 
-            <div class="ats-filter-item">
-              <label for="atsFilterYear">Año:</label>
-              <select id="atsFilterYear" class="ats-select"></select>
-            </div>
-
-            <div class="ats-filter-item">
-              <label for="atsFilterMonth">Mes:</label>
-              <select id="atsFilterMonth" class="ats-select"></select>
-            </div>
-
-            <label class="ats-checkbox-label" style="display: flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer; color: var(--text-secondary); margin-left: 2px;" title="Permite seleccionar cualquier mes del año para consultar o declarar en ceros">
-              <input type="checkbox" id="chkShowAllMonthsAts" style="cursor: pointer;">
-              <span>Todos los meses</span>
+            <!-- Toggle Moderno: Todos los Meses -->
+            <label class="ats-toggle-chip" title="Habilita todos los meses del año para consultar o declarar en ceros">
+              <input type="checkbox" id="chkShowAllMonthsAts" class="ats-toggle-input">
+              <span class="ats-toggle-track"><span class="ats-toggle-thumb"></span></span>
+              <span class="ats-toggle-text">Todos los meses</span>
             </label>
 
-            <button id="btnLoadPeriodXmls" class="btn btn-secondary">Cargar Comprobantes</button>
-            <button id="btnOpenCurrentPeriodFolder" class="btn btn-secondary" title="Abrir carpeta del periodo en el explorador de archivos">Abrir Carpeta</button>
+            <!-- Botones de Exploración del Período -->
+            <div class="ats-button-group">
+              <button id="btnLoadPeriodXmls" class="btn btn-secondary ats-action-btn" title="Cargar comprobantes del período seleccionado">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                </svg>
+                <span>Cargar</span>
+              </button>
+              <button id="btnOpenCurrentPeriodFolder" class="btn btn-secondary ats-action-btn" title="Abrir carpeta del período en el explorador de archivos">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <span>Carpeta</span>
+              </button>
+            </div>
           </div>
 
           <div class="ats-actions-group">
-            <button id="btnGenerateAtsCeros" class="btn btn-secondary" title="Generar Anexo ATS sin movimientos (en ceros) para cualquier período">ATS en Ceros</button>
-            <button id="btnValidateAtsPeriod" class="btn btn-secondary" title="Verificar que los comprobantes cumplan con todas las reglas técnicas del SRI">Validar Período</button>
-            <button id="btnExportCsv" class="btn btn-secondary">Exportar a Excel (CSV)</button>
-            <button id="btnGenerateAtsXml" class="btn btn-success font-bold" title="Generar archivo XML y paquete ZIP oficial para el SRI">Generar ATS (ZIP)</button>
+            <button id="btnGenerateAtsCeros" class="btn btn-secondary ats-action-btn ats-btn-ceros" title="Generar Anexo ATS sin movimientos (en ceros) para cualquier período">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+              </svg>
+              <span>ATS en Ceros</span>
+            </button>
+            <button id="btnValidateAtsPeriod" class="btn btn-secondary ats-action-btn" title="Verificar que los comprobantes cumplan con todas las reglas técnicas del SRI">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                <path d="m9 12 2 2 4-4"></path>
+              </svg>
+              <span>Validar</span>
+            </button>
+            <button id="btnExportCsv" class="btn btn-secondary ats-action-btn" title="Exportar reporte de comprobantes a formato Excel (CSV)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="8" y1="13" x2="16" y2="13"></line>
+                <line x1="8" y1="17" x2="16" y2="17"></line>
+              </svg>
+              <span>Excel</span>
+            </button>
+            <button id="btnGenerateAtsXml" class="btn btn-success ats-action-btn ats-btn-primary" title="Generar archivo XML y paquete ZIP oficial para el SRI">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                <rect x="1" y="3" width="22" height="5"></rect>
+                <line x1="10" y1="12" x2="14" y2="12"></line>
+              </svg>
+              <span>Generar ATS (ZIP)</span>
+            </button>
           </div>
         </div>
 
         <!-- Indicadores Resumen (KPIs) -->
         <div class="ats-kpi-bar">
           <div class="kpi-card">
-            <span class="kpi-label">Comprobantes</span>
+            <div class="kpi-card-header">
+              <span class="kpi-label">Comprobantes</span>
+              <span class="kpi-icon-pill" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </span>
+            </div>
             <span id="kpiCount" class="kpi-value">0</span>
           </div>
           <div class="kpi-card">
-            <span class="kpi-label">Subtotal Tarifa 0%</span>
+            <div class="kpi-card-header">
+              <span class="kpi-label">Subtotal Tarifa 0%</span>
+              <span class="kpi-icon-pill" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="15" r="1"/></svg>
+              </span>
+            </div>
             <span id="kpiBase0" class="kpi-value">$0.00</span>
           </div>
           <div class="kpi-card">
-            <span class="kpi-label">Subtotal Tarifa Gravada</span>
+            <div class="kpi-card-header">
+              <span class="kpi-label">Subtotal Gravada</span>
+              <span class="kpi-icon-pill" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              </span>
+            </div>
             <span id="kpiBaseGrav" class="kpi-value">$0.00</span>
           </div>
-          <div class="kpi-card">
-            <span class="kpi-label">Monto IVA</span>
+          <div class="kpi-card kpi-card-iva">
+            <div class="kpi-card-header">
+              <span class="kpi-label">Monto IVA</span>
+              <span class="kpi-icon-pill pill-iva" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              </span>
+            </div>
             <span id="kpiMontoIva" class="kpi-value highlight-iva">$0.00</span>
           </div>
-          <div class="kpi-card">
-            <span class="kpi-label">Total Facturado</span>
+          <div class="kpi-card kpi-card-total">
+            <div class="kpi-card-header">
+              <span class="kpi-label">Total Facturado</span>
+              <span class="kpi-icon-pill pill-total" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              </span>
+            </div>
             <span id="kpiTotal" class="kpi-value highlight-total">$0.00</span>
           </div>
         </div>

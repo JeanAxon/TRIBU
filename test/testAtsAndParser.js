@@ -190,6 +190,7 @@ console.log('[OK] registerIpc: Manejadores IPC del módulo ATS registrados limpi
 // 7. Probar AtsModuleView: filtrado estricto de meses en frontend
 const optionsCreated = [];
 global.document = {
+  querySelectorAll: () => [],
   getElementById: (id) => ({
     id,
     innerHTML: '',

@@ -106,6 +106,22 @@ class AtsModuleView {
       this.filterCategory.addEventListener('change', () => this._onCategoryChange());
     }
 
+    // Sincronización del selector segmentado visual (Compras / Ventas)
+    if (typeof document !== 'undefined' && typeof document.querySelectorAll === 'function') {
+      const segmentBtns = document.querySelectorAll('#atsSegmentedCategory .ats-segment-btn');
+      segmentBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const cat = btn.getAttribute('data-category');
+          if (this.filterCategory && this.filterCategory.value !== cat) {
+            this.filterCategory.value = cat;
+            this.filterCategory.dispatchEvent(new Event('change'));
+          } else {
+            this._syncSegmentedCategory(cat);
+          }
+        });
+      });
+    }
+
     if (this.filterYear) {
       this.filterYear.addEventListener('change', () => this._onYearChange());
     }
@@ -230,8 +246,22 @@ class AtsModuleView {
   }
 
   _onCategoryChange() {
+    const cat = this.filterCategory ? this.filterCategory.value : 'Compras';
+    this._syncSegmentedCategory(cat);
     this._updateYearAndMonthSelectors(false);
     this.loadPeriodComprobantes();
+  }
+
+  _syncSegmentedCategory(cat) {
+    if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
+    const segmentBtns = document.querySelectorAll('#atsSegmentedCategory .ats-segment-btn');
+    if (segmentBtns && segmentBtns.length > 0) {
+      segmentBtns.forEach(b => {
+        const isActive = b.getAttribute('data-category') === cat;
+        b.classList.toggle('active', isActive);
+        b.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+    }
   }
 
   _onYearChange() {
